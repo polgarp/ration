@@ -1,11 +1,10 @@
 import AppKit
 
-/// Installing and removing the status line tap on this machine.
+/// Installing and removing the tap on this machine.
 ///
-/// `Installer` decides what the settings file should contain; this does the
-/// filesystem work around it — backing up first, writing the tap where deleting
-/// the app cannot break anything, and never touching a settings file it could
-/// not parse.
+/// `Installer` decides what the file should contain; this does the filesystem
+/// work — backing up first, and writing the tap outside the app bundle so
+/// deleting Ration cannot break a status line.
 enum Setup {
 
     /// RATION_CLAUDE_DIR redirects every path below, so the installer can be
@@ -125,12 +124,9 @@ enum Setup {
         cachedState = nil
     }
 
-    /// Keeps one backup per day rather than one per attempt, so repeated
-    /// fiddling cannot bury the version that actually worked.
-    ///
-    /// Throws rather than shrugging: the alert promises the file is backed up
-    /// first, and overwriting someone's settings after silently failing to copy
-    /// them is the one outcome this whole path exists to prevent.
+    /// One backup per day, so repeated attempts cannot bury the version that
+    /// worked. Throws rather than shrugging: the alert promises a backup, and
+    /// overwriting after a silent copy failure is the outcome to prevent.
     private static func backUpSettings(_ data: Data) throws {
         let stamp = DateFormatter()
         stamp.dateFormat = "yyyyMMdd"

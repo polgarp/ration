@@ -1,20 +1,14 @@
 import Foundation
 
-/// Reads and rewrites Claude Code's `settings.json` to wrap the status line.
+/// Rewrites Claude Code's `settings.json` to wrap the status line.
 ///
-/// This is the most dangerous code in Ration: a bug here breaks a stranger's
-/// Claude Code on a machine nobody will ever debug. Three rules follow from
-/// that, and every one of them is a test:
+/// A bug here breaks a stranger's Claude Code, so three rules, each a test:
 ///
-/// 1. **Never write what we could not read.** Unparseable settings throw
-///    rather than being replaced with something plausible.
-/// 2. **Never lose their command.** Wrapping prefixes; unwrapping strips the
-///    prefix and gives back exactly the string that was there.
-/// 3. **Never take away a choice they made.** A `refreshInterval` faster than
-///    ours is left alone.
+/// 1. Never write what we could not read — unparseable settings throw.
+/// 2. Never lose their command — wrapping prefixes, unwrapping strips.
+/// 3. Never undo a choice they made — a faster `refreshInterval` stays.
 ///
-/// Note that rewriting parses and re-serialises, so key order in the file may
-/// change. The caller backs the file up first.
+/// Re-serialising may reorder keys; the caller backs the file up first.
 public enum Installer {
 
     public enum State: Equatable {
@@ -138,12 +132,10 @@ public enum Installer {
 
     // MARK: Helpers
 
-    /// The `statusLine` block, or `nil` when the file has none.
+    /// The `statusLine` block, or `nil` when there is none.
     ///
-    /// Throws when the key holds something other than an object, or when its
-    /// `command` is not a string. Rule 1 applies one level down as well as at
-    /// the top: `"statusLine": "my-script.sh"` is a shape we do not understand,
-    /// and reading it as "no status line" would quietly overwrite it.
+    /// Throws on an unfamiliar shape — `"statusLine": "my-script.sh"` read as
+    /// "no status line" would silently overwrite it. Rule 1, one level down.
     private static func statusLineBlock(_ root: [String: Any]) throws -> [String: Any]? {
         guard let raw = root["statusLine"], !(raw is NSNull) else { return nil }
         guard let block = raw as? [String: Any] else { throw Failure.unreadable }

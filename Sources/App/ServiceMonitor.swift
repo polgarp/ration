@@ -1,14 +1,10 @@
 import Foundation
 
-/// Polls Claude's public status page.
+/// Polls Claude's public status page — the only network call Ration makes,
+/// unauthenticated and carrying nothing about the user.
 ///
-/// The endpoint is unauthenticated and carries no user data — no cookie, no
-/// token — so this sends nothing about you. It is still the only network call
-/// Ration makes, which the README says plainly.
-///
-/// A failed check yields no status rather than a bad one: the status page being
-/// unreachable is our problem, not Anthropic's, and is not worth alarming
-/// anyone about.
+/// A failed check yields no status rather than a bad one: an unreachable status
+/// page is our problem, not Anthropic's.
 final class ServiceMonitor {
 
     private(set) var status: ServiceStatus?

@@ -12,20 +12,16 @@ public struct NamedWindow: Equatable {
 
 /// One capture of Claude Code's status line payload.
 ///
-/// Decoding is deliberately forgiving. The documented schema is narrower than
-/// what actually arrives, and the docs warn that `rate_limits` shows up only
-/// for Pro/Max subscribers, only after the first API response of a session,
-/// and that each window may be independently absent. Anything unreadable
-/// becomes `nil` rather than a crash or a misleading zero.
+/// Decoding is forgiving by design: `rate_limits` appears only for Pro/Max,
+/// only after the first API response, and each window may be absent
+/// independently. Anything unreadable becomes `nil`, never a misleading zero.
 public struct Snapshot {
     public let fiveHour: UsageWindow?
     public let sevenDay: UsageWindow?
-    /// Per-model and server-labelled buckets — `seven_day_opus`,
-    /// `seven_day_sonnet`, and the `model_scoped` list whose `display_name` the
-    /// server supplies ("e.g. 'Fable'"). All undocumented, so every one is
-    /// optional and nothing downstream may depend on a particular label
-    /// existing. Rendering whatever arrives is what lets a new bucket appear
-    /// without a release.
+    /// Per-model buckets: `seven_day_opus`, `seven_day_sonnet`, and
+    /// `model_scoped`, whose `display_name` the server supplies. All
+    /// undocumented, so nothing may depend on a given label existing —
+    /// rendering whatever arrives is what lets a new bucket ship itself.
     public let extra: [NamedWindow]
     public let capturedAt: Date
 

@@ -2,14 +2,10 @@ import AppKit
 
 /// The menu bar mark, drawn rather than embedded.
 ///
-/// Drawing means one code path serves every size and every appearance: the
-/// image is flagged `isTemplate`, so macOS tints the silhouette to suit a
-/// light or dark menu bar and no second asset is needed.
+/// Flagged `isTemplate`, so macOS tints one silhouette for both appearances.
 ///
-/// The mark carries ONE value — how much of the window is spent — plus one
-/// bit for whether you are over pace. Round one of the design tried to encode
-/// pace positionally and it was illegible at 18pt; a state change survives
-/// where a position does not.
+/// It carries one value — how much is spent — plus one bit for over pace. A
+/// positional pace marker was illegible at 18pt; a state change is not.
 enum Mark {
 
     enum Style: String {

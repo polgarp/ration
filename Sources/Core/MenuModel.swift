@@ -2,14 +2,10 @@ import Foundation
 
 /// What the menu bar shows: two slots, either of which may be empty.
 ///
-/// The week owns the first slot permanently. Claude Code's own status line
-/// already shows session usage on screen while you work, so a session
-/// percentage here would be a second copy of a number you are already looking
-/// at — the week is the number nothing else reports.
-///
-/// The countdown *appends*, it never replaces. An earlier version swapped the
-/// percentage out, which meant the same slot changed units and a glance could
-/// not tell which reading it was seeing.
+/// The week owns the first slot permanently — Claude Code's status line already
+/// shows session usage, so the week is the number nothing else reports. The
+/// countdown appends rather than replacing: a slot that changes units cannot be
+/// read at a glance.
 public struct BarContent: Equatable {
     /// Percentage **used**, not remaining: the disc fills as you spend, so the
     /// number has to count in the same direction or the two halves of the item
@@ -61,12 +57,9 @@ public enum MenuModel {
         return BarContent(weekUsed: week, backIn: backIn)
     }
 
-    /// A missing week still renders its slot as a dash, so the countdown never
-    /// slides into the position the percentage normally holds.
-    ///
-    /// The countdown stays a *duration* here even though the dropdown gives a
-    /// concrete time: a bare "17:50" in the menu bar sits inches from the
-    /// system clock and reads as a duplicate of it.
+    /// A missing week renders as a dash so the countdown never takes the
+    /// percentage's position. It stays a duration here, unlike in the dropdown:
+    /// a bare "17:50" beside the system clock reads as a second clock.
     public static func barText(_ content: BarContent) -> String {
         let week = content.weekUsed.map { "\(Int($0))%" }
         guard let backIn = content.backIn else { return week ?? "—" }
@@ -109,11 +102,8 @@ public enum MenuModel {
 
     // MARK: Accessibility
 
-    /// What VoiceOver announces for the status item.
-    ///
-    /// The bar itself is a disc and a bare percentage: sighted users get the
-    /// direction from the fill, and everyone else got "12%" with no clue what
-    /// it counted.
+    /// What VoiceOver announces for the status item. The fill conveys
+    /// direction visually; without this the item read as a bare "12%".
     public static func spoken(_ s: Snapshot?, now: Date, formatting: Formatting,
                               service: ServiceStatus? = nil) -> String {
         var parts = ["Ration."]
@@ -137,8 +127,7 @@ public enum MenuModel {
         return parts.joined(separator: " ")
     }
 
-    /// A menu row as a phrase. Rows are laid out with a tab stop, which reads
-    /// as a gap rather than as the column break it looks like.
+    /// A row as a phrase: the tab stop that aligns columns reads as a gap.
     public static func spokenRow(_ row: MenuRow) -> String {
         switch row {
         case .headline(let text), .note(let text), .status(let text, _):

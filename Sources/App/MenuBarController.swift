@@ -85,12 +85,8 @@ final class MenuBarController: NSObject {
         schedule(every: MenuModel.bar(snapshot, now: now).backIn == nil ? idleTick : countdownTick)
     }
 
-    /// The bar is redrawn every second for the countdown; the dropdown is not.
-    ///
-    /// Assigning `statusItem.menu` replaces the menu AppKit is currently
-    /// tracking, so rebuilding on every tick dismissed the dropdown out from
-    /// under whoever had just opened it. It is rebuilt only when it would read
-    /// differently, and never while it is on screen.
+    /// Rebuilt only when it would read differently, and never while open:
+    /// assigning `statusItem.menu` dismisses a menu AppKit is tracking.
     private func renderMenu(now: Date) {
         guard !isMenuOpen else { return }
         let rows = MenuModel.rows(snapshot, now: now, staleAfter: staleAfter, formatting: formatting,
@@ -150,12 +146,9 @@ final class MenuBarController: NSObject {
             // Monospaced digits so the item doesn't jitter as it counts down.
             attributes: [.font: NSFont.monospacedDigitSystemFont(ofSize: 0, weight: .regular)])
 
-        // Staleness dims the whole item, image and text together, using the
-        // system's own treatment. The exception is a pending countdown: it is
-        // derived from an absolute `resets_at`, so it stays exact however old
-        // the snapshot is — and being locked out is precisely when Claude Code
-        // is closed and the snapshot goes stale. Dimming the one number still
-        // worth trusting would be exactly backwards.
+        // Staleness dims image and text together. Not a pending countdown
+        // though: it derives from an absolute `resets_at`, so it stays exact —
+        // and being locked out is exactly when the snapshot goes stale.
         button.appearsDisabled = stale && content.backIn == nil
     }
 
