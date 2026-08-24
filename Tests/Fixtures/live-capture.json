@@ -2,7 +2,7 @@
   "session_id": "00000000-0000-0000-0000-000000000000",
   "transcript_path": "/Users/example/.claude/projects/x/y.jsonl",
   "cwd": "/Users/example/project",
-  "prompt_id": "527e294e-85d0-406d-96af-76fdc30b0658",
+  "prompt_id": "00000000-0000-0000-0000-000000000000",
   "effort": {
     "level": "high"
   },
@@ -11,8 +11,8 @@
     "display_name": "Opus 5"
   },
   "workspace": {
-    "current_dir": "/Users/peterpolgar/CoolThingsDoing/claude-usage-menubar",
-    "project_dir": "/Users/peterpolgar/CoolThingsDoing",
+    "current_dir": "/Users/example/project",
+    "project_dir": "/Users/example",
     "added_dirs": []
   },
   "version": "2.1.238",
@@ -20,11 +20,11 @@
     "name": "default"
   },
   "cost": {
-    "total_cost_usd": 6.646518499999997,
-    "total_duration_ms": 2395200,
-    "total_api_duration_ms": 1052687,
-    "total_lines_added": 453,
-    "total_lines_removed": 103
+    "total_cost_usd": 1.23,
+    "total_duration_ms": 60000,
+    "total_api_duration_ms": 30000,
+    "total_lines_added": 0,
+    "total_lines_removed": 0
   },
   "context_window": {
     "total_input_tokens": 151816,

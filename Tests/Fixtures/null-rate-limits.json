@@ -1,6 +1,8 @@
 {
-  "session_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-  "cwd": "/Users/peterpolgar",
-  "model": { "display_name": "Opus 5" },
+  "session_id": "00000000-0000-0000-0000-000000000000",
+  "cwd": "/Users/example",
+  "model": {
+    "display_name": "Opus 5"
+  },
   "rate_limits": null
 }

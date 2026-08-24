@@ -1,10 +1,18 @@
 {
   "hook_event_name": "Status",
-  "session_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-  "cwd": "/Users/peterpolgar",
-  "model": { "id": "claude-opus-5", "display_name": "Opus 5" },
-  "context_window": { "used_percentage": 3.0 },
+  "session_id": "00000000-0000-0000-0000-000000000000",
+  "cwd": "/Users/example",
+  "model": {
+    "id": "claude-opus-5",
+    "display_name": "Opus 5"
+  },
+  "context_window": {
+    "used_percentage": 3.0
+  },
   "rate_limits": {
-    "five_hour": { "used_percentage": 91.0, "resets_at": 1787356800 }
+    "five_hour": {
+      "used_percentage": 91.0,
+      "resets_at": 1787356800
+    }
   }
 }
