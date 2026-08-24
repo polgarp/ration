@@ -61,6 +61,17 @@ func runSnapshotTests(_ t: Harness) {
              scoped?.extra.first(where: { $0.label == "Fable" })?.window.resetsAt ?? Date.distantPast,
              Date(timeIntervalSince1970: 1787734800))
 
+    // The precision of an undocumented field is not ours to assume: a formatter
+    // that only accepts whole seconds drops the bucket without a word.
+    let fractional = Snapshot.decode(Data(#"""
+    {"rate_limits": {"model_scoped": [
+        {"display_name": "Fable", "utilization": 0.12,
+         "resets_at": "2026-08-26T09:00:00.000Z"}]}}
+    """#.utf8), capturedAt: Date(timeIntervalSince1970: 1_787_400_000))
+    t.expect("an ISO reset time with fractional seconds still parses",
+             fractional?.extra.first?.window.resetsAt ?? Date.distantPast,
+             Date(timeIntervalSince1970: 1787734800))
+
     t.describe("Snapshot — payloads without extras")
     t.expect("no buckets is simply an empty list", decodeFixture("healthy")?.extra.count ?? -1, 0)
 }

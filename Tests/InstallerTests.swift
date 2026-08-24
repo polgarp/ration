@@ -73,6 +73,23 @@ func runInstallerTests(_ t: Harness) {
     do { _ = try Installer.uninstall(from: settings("malformed"), tap: tap) } catch { threw = true }
     t.expect("uninstall throws too", threw, true)
 
+    t.describe("Installer — a status line shaped in a way we do not understand")
+    // Rule 1 one level down. Reading `"statusLine": "script.sh"` as "no status
+    // line" would have silently replaced it, which is losing their command by
+    // another route.
+    let oddShape = Data(#"{"statusLine": "bash ~/.claude/statusline.sh"}"#.utf8)
+    t.expect("a non-object status line is unreadable, not unconfigured",
+             Installer.inspect(oddShape, tap: tap), .unreadable)
+    threw = false
+    do { _ = try Installer.install(into: oddShape, tap: tap) } catch { threw = true }
+    t.expect("and install refuses to overwrite it", threw, true)
+    let oddCommand = Data(#"{"statusLine": {"type": "command", "command": ["a", "b"]}}"#.utf8)
+    t.expect("nor is a non-string command something we may replace",
+             Installer.inspect(oddCommand, tap: tap), .unreadable)
+    // An explicit null is a genuine absence, not a shape we failed to read.
+    t.expect("an explicitly null status line is simply unconfigured",
+             Installer.inspect(Data(#"{"statusLine": null}"#.utf8), tap: tap), .notConfigured)
+
     t.describe("Installer — the preview names the actual change")
     let preview = Installer.preview(for: .unwrapped("bash ~/.claude/statusline.sh"), tap: tap)
     t.expect("shows the command before", preview.contains("bash ~/.claude/statusline.sh"), true)

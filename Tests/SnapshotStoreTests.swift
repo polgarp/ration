@@ -33,6 +33,20 @@ func runSnapshotStoreTests(_ t: Harness) {
                          capturedAt: now.addingTimeInterval(10)))
     t.expect("usage moves on within a window", same.best?.fiveHour?.usedPercentage ?? -1, 35.0)
 
+    t.describe("SnapshotStore — an idle session cannot drag the same window backwards")
+    // The weekly window resets on a fixed boundary, so every session reports
+    // the same resets_at for a whole week: an idle session's write is a tie,
+    // not an older window. Handing ties to whoever wrote last let it replay a
+    // week-old percentage and the bar flickered between the two readings.
+    var tied = SnapshotStore()
+    tied.accept(Snapshot(fiveHour: nil, sevenDay: w(85, resetsIn: 500_000), capturedAt: now))
+    tied.accept(Snapshot(fiveHour: nil, sevenDay: w(20, resetsIn: 500_000),
+                         capturedAt: now.addingTimeInterval(10)))
+    t.expect("a stale replay of the current week is ignored",
+             tied.best?.sevenDay?.usedPercentage ?? -1, 85.0)
+    t.expect("but it still counts as a live report of that window",
+             tied.best?.capturedAt ?? Date.distantPast, now.addingTimeInterval(10))
+
     t.describe("SnapshotStore — windows are judged independently")
     // One session can hold a current week but a stale session window.
     var mixed = SnapshotStore()

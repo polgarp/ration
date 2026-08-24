@@ -1,9 +1,11 @@
 import AppKit
 
 // The tap writes here; CLAUDE_USAGE_SNAPSHOT overrides it, which is how the
-// state fixtures get driven during development.
+// state fixtures get driven during development. Falling back to Setup's path
+// rather than a second hardcoded one keeps the app watching the same file the
+// installer writes and uninstall deletes, RATION_CLAUDE_DIR included.
 let snapshotPath = ProcessInfo.processInfo.environment["CLAUDE_USAGE_SNAPSHOT"]
-    ?? NSString(string: "~/.claude/usage-snapshot.json").expandingTildeInPath
+    ?? Setup.snapshotURL.path
 let snapshotURL = URL(fileURLWithPath: snapshotPath)
 
 // `--dump` prints what the dropdown would say and exits, so states can be

@@ -8,9 +8,11 @@ import Foundation
 /// rebroadcasts last week's windows indefinitely and clobbers current data.
 ///
 /// Rate limit windows only ever move forward, which makes `resets_at` a
-/// version number. A window is accepted only when it is at least as new as the
-/// best one seen. No coordination between writers is needed, and the tap stays
-/// free of the JSON parsing we deliberately kept out of the hot path.
+/// version number, and usage inside one window only ever climbs, which orders
+/// the writes that share a `resets_at`. A window is accepted only when it is at
+/// least as new as the best one seen. No coordination between writers is
+/// needed, and the tap stays free of the JSON parsing we deliberately kept out
+/// of the hot path.
 public struct SnapshotStore {
 
     public private(set) var best: Snapshot?
@@ -50,11 +52,23 @@ public struct SnapshotStore {
 
     /// Windows are judged independently: one session can hold a current week
     /// alongside a session window that expired hours ago.
+    ///
+    /// - Returns: the window to keep, and whether the incoming write was about
+    ///   a window that is still current — which is what freshness turns on,
+    ///   even when the value it carried was not the one we kept.
     private func newer(_ current: UsageWindow?,
                        _ incoming: UsageWindow?) -> (window: UsageWindow?, accepted: Bool) {
         guard let incoming else { return (current, false) }
         guard let current else { return (incoming, true) }
-        // Ties go to the incoming write: same window, more recent usage.
-        return incoming.resetsAt >= current.resetsAt ? (incoming, true) : (current, false)
+        if incoming.resetsAt > current.resetsAt { return (incoming, true) }
+        if incoming.resetsAt < current.resetsAt { return (current, false) }
+        // The same window, written by a different session. The weekly window
+        // resets on a fixed boundary, so *every* session shares its resets_at
+        // for a whole week and this is the ordinary case, not an edge one.
+        // Usage inside a window only climbs, so the higher reading is the later
+        // one: a session idle since Tuesday replays the percentage it saw
+        // before its last API response, and handing the tie to whoever wrote
+        // last would let it drag the week back down every other tick.
+        return (incoming.usedPercentage >= current.usedPercentage ? incoming : current, true)
     }
 }

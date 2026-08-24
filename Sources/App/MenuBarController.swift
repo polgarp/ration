@@ -12,6 +12,11 @@ final class MenuBarController: NSObject {
     private var snapshot: Snapshot? { store.best }
     private var lastModified: Date?
     private var timer: Timer?
+    /// What the dropdown currently says, so it is only rebuilt when it would
+    /// say something different.
+    private var shownRows: [MenuRow]?
+    private var shownSetup: Installer.State?
+    private var isMenuOpen = false
     private let formatting = Formatting()
     private let service = ServiceMonitor()
 
@@ -60,18 +65,35 @@ final class MenuBarController: NSObject {
         let stale = MenuModel.isStale(snapshot, now: now, staleAfter: staleAfter)
 
         renderBar(now: now, stale: stale)
+        renderMenu(now: now)
+    }
+
+    /// The bar is redrawn every second for the countdown; the dropdown is not.
+    ///
+    /// Assigning `statusItem.menu` replaces the menu AppKit is currently
+    /// tracking, so rebuilding on every tick dismissed the dropdown out from
+    /// under whoever had just opened it. It is rebuilt only when it would read
+    /// differently, and never while it is on screen.
+    private func renderMenu(now: Date) {
+        guard !isMenuOpen else { return }
+        let rows = MenuModel.rows(snapshot, now: now, staleAfter: staleAfter, formatting: formatting,
+                                  service: service.status)
+        let setup = Setup.currentState()
+        guard rows != shownRows || setup != shownSetup || statusItem.menu == nil else { return }
+        shownRows = rows
+        shownSetup = setup
 
         let menu = NSMenu()
+        menu.delegate = self
         // Items carry no action, and AppKit greys actionless items unless told
         // not to — which made the entire dropdown read as disabled.
         menu.autoenablesItems = false
-        for row in MenuModel.rows(snapshot, now: now, staleAfter: staleAfter, formatting: formatting,
-                                 service: service.status) {
+        for row in rows {
             menu.addItem(view(for: row))
         }
         // The only actionable items in the dropdown, kept at the bottom so the
         // reading is never competing with a control.
-        switch Setup.currentState() {
+        switch setup {
         case .wrapped:
             menu.addItem(action("Remove Ration's status line hook…", #selector(confirmUninstall)))
         case .notConfigured, .unwrapped:
@@ -249,4 +271,9 @@ final class MenuBarController: NSObject {
         item.attributedTitle = title
         return item
     }
+}
+
+extension MenuBarController: NSMenuDelegate {
+    func menuWillOpen(_ menu: NSMenu) { isMenuOpen = true }
+    func menuDidClose(_ menu: NSMenu) { isMenuOpen = false }
 }

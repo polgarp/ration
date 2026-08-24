@@ -36,8 +36,10 @@ public enum Installer {
 
     public static func inspect(_ settings: Data, tap: String) -> State {
         guard let root = object(settings) else { return .unreadable }
-        guard let statusLine = root["statusLine"] as? [String: Any],
-              let command = statusLine["command"] as? String,
+        let block: [String: Any]?
+        do { block = try statusLineBlock(root) } catch { return .unreadable }
+        guard let block,
+              let command = block["command"] as? String,
               !command.isEmpty
         else { return .notConfigured }
         if command == tap || command.hasPrefix(tap + " ") { return .wrapped }
@@ -58,7 +60,7 @@ public enum Installer {
     public static func install(into settings: Data, tap: String) throws -> Data {
         guard var root = object(settings) else { throw Failure.unreadable }
 
-        var statusLine = root["statusLine"] as? [String: Any] ?? ["type": "command"]
+        var statusLine = try statusLineBlock(root) ?? ["type": "command"]
         let existing = statusLine["command"] as? String ?? ""
 
         // Idempotent: wrapping an already-wrapped command leaves it alone,
@@ -83,7 +85,7 @@ public enum Installer {
     public static func uninstall(from settings: Data, tap: String,
                                  removeRefreshInterval: Bool = false) throws -> Data {
         guard var root = object(settings) else { throw Failure.unreadable }
-        guard var statusLine = root["statusLine"] as? [String: Any],
+        guard var statusLine = try statusLineBlock(root),
               let command = statusLine["command"] as? String
         else { return try serialise(root) }
 
@@ -135,6 +137,21 @@ public enum Installer {
     }
 
     // MARK: Helpers
+
+    /// The `statusLine` block, or `nil` when the file has none.
+    ///
+    /// Throws when the key holds something other than an object, or when its
+    /// `command` is not a string. Rule 1 applies one level down as well as at
+    /// the top: `"statusLine": "my-script.sh"` is a shape we do not understand,
+    /// and reading it as "no status line" would quietly overwrite it.
+    private static func statusLineBlock(_ root: [String: Any]) throws -> [String: Any]? {
+        guard let raw = root["statusLine"], !(raw is NSNull) else { return nil }
+        guard let block = raw as? [String: Any] else { throw Failure.unreadable }
+        if let command = block["command"], !(command is NSNull), !(command is String) {
+            throw Failure.unreadable
+        }
+        return block
+    }
 
     private static func object(_ data: Data) -> [String: Any]? {
         guard !data.isEmpty,

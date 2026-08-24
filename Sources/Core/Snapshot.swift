@@ -48,11 +48,29 @@ public struct Snapshot {
             if let seconds = try? c.decode(Double.self) {
                 date = Date(timeIntervalSince1970: seconds)
             } else if let text = try? c.decode(String.self) {
-                date = ISO8601DateFormatter().date(from: text)
+                date = Snapshot.parseISO(text)
             } else {
                 date = nil
             }
         }
+    }
+
+    /// `ISO8601DateFormatter` matches exactly one shape at a time: the default
+    /// options reject fractional seconds outright. `model_scoped` is
+    /// undocumented, so its precision is not ours to assume — and a formatter
+    /// that says no drops the whole bucket silently rather than failing loudly.
+    private static let isoFormatters: [ISO8601DateFormatter] = {
+        let plain = ISO8601DateFormatter()
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return [plain, fractional]
+    }()
+
+    static func parseISO(_ text: String) -> Date? {
+        for formatter in isoFormatters {
+            if let date = formatter.date(from: text) { return date }
+        }
+        return nil
     }
 
     private struct Payload: Decodable {

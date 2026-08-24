@@ -33,7 +33,9 @@ public enum Format {
     /// warning while a bare "15" reads as a measurement.
     public static func pace(_ pace: WeeklyPace) -> String {
         let delta = pace.delta
-        if abs(delta) < 1 { return "on pace" }
+        // The same tolerance the headline and the mark read, so the wording and
+        // the conclusion can never disagree about where "on pace" ends.
+        if abs(delta) < Metrics.paceTolerance { return "on pace" }
         if delta > 0 { return "+\(Int(delta.rounded())) ahead of pace" }
         return "\(Int((-delta).rounded())) under pace"
     }

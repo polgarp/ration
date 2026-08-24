@@ -38,6 +38,7 @@ enum Setup {
         case unreadableSettings
         case tapMissingFromBundle
         case cannotWrite(String)
+        case cannotBackUp
 
         var errorDescription: String? {
             switch self {
@@ -48,6 +49,9 @@ enum Setup {
                 return "This copy of Ration is missing its tap script. Re-download the app."
             case .cannotWrite(let what):
                 return "Could not write \(what). Nothing was changed."
+            case .cannotBackUp:
+                return "Could not back up ~/.claude/settings.json, so nothing was changed. "
+                     + "Check that ~/.claude is writable and try again."
             }
         }
     }
@@ -72,18 +76,28 @@ enum Setup {
         // user's configuration exactly as it was.
         let addedRefresh = Installer.addsRefreshInterval(to: existing)
         let updated = try Installer.install(into: existing, tap: resolvedTapCommand)
-        UserDefaults.standard.set(addedRefresh, forKey: addedRefreshKey)
 
         try? FileManager.default.createDirectory(at: claudeDirectory, withIntermediateDirectories: true)
-        backUpSettings(existing)
+        try backUpSettings(existing)
 
         do {
-            try script.write(to: tapURL)
+            // Atomic: on a re-install the old tap is being executed by every
+            // live Claude Code session on its refresh interval, and bash
+            // reading a half-written script is exactly the broken status line
+            // this app promises never to cause. A rename swaps it whole.
+            try script.write(to: tapURL, options: .atomic)
             try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tapURL.path)
         } catch { throw Problem.cannotWrite("the tap script") }
 
-        do { try updated.write(to: settingsURL) }
+        // Atomic for the same reason: Claude Code re-reads settings.json while
+        // we are writing it, and a truncated read is an unparseable config.
+        do { try updated.write(to: settingsURL, options: .atomic) }
         catch { throw Problem.cannotWrite("settings.json") }
+
+        // Recorded only once the change actually landed: a flag left behind by
+        // a failed install would make a later uninstall strip a refreshInterval
+        // it never added.
+        UserDefaults.standard.set(addedRefresh, forKey: addedRefreshKey)
     }
 
     static func uninstall() throws {
@@ -91,8 +105,8 @@ enum Setup {
         let updated = try Installer.uninstall(
             from: existing, tap: resolvedTapCommand,
             removeRefreshInterval: UserDefaults.standard.bool(forKey: addedRefreshKey))
-        backUpSettings(existing)
-        do { try updated.write(to: settingsURL) }
+        try backUpSettings(existing)
+        do { try updated.write(to: settingsURL, options: .atomic) }
         catch { throw Problem.cannotWrite("settings.json") }
         // Leave nothing of ours behind.
         try? FileManager.default.removeItem(at: tapURL)
@@ -102,11 +116,16 @@ enum Setup {
 
     /// Keeps one backup per day rather than one per attempt, so repeated
     /// fiddling cannot bury the version that actually worked.
-    private static func backUpSettings(_ data: Data) {
+    ///
+    /// Throws rather than shrugging: the alert promises the file is backed up
+    /// first, and overwriting someone's settings after silently failing to copy
+    /// them is the one outcome this whole path exists to prevent.
+    private static func backUpSettings(_ data: Data) throws {
         let stamp = DateFormatter()
         stamp.dateFormat = "yyyyMMdd"
         let url = claudeDirectory.appendingPathComponent("settings.json.ration-backup-\(stamp.string(from: Date()))")
         guard !FileManager.default.fileExists(atPath: url.path) else { return }
-        try? data.write(to: url)
+        do { try data.write(to: url, options: .atomic) }
+        catch { throw Problem.cannotBackUp }
     }
 }
