@@ -1,0 +1,47 @@
+#!/bin/bash
+# Builds Ration.app. Needs only Xcode Command Line Tools — no Xcode.
+set -e
+cd "$(dirname "$0")"
+
+NAME="Ration"
+VERSION="0.1.0"
+BUNDLE_ID="com.polgarp.ration"
+MIN_MACOS="13.0"
+OUT="build"
+APP="$OUT/$NAME.app"
+
+rm -rf "$APP"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+
+SOURCES=(Sources/Core/*.swift Sources/App/*.swift)
+
+# Universal binary so one download works on Apple Silicon and Intel.
+for ARCH in arm64 x86_64; do
+    swiftc -O -target "${ARCH}-apple-macosx${MIN_MACOS}" \
+        -o "$OUT/$NAME-$ARCH" "${SOURCES[@]}"
+done
+lipo -create -output "$APP/Contents/MacOS/$NAME" "$OUT/$NAME-arm64" "$OUT/$NAME-x86_64"
+rm -f "$OUT/$NAME-arm64" "$OUT/$NAME-x86_64"
+
+cat > "$APP/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>              <string>$NAME</string>
+    <key>CFBundleDisplayName</key>       <string>$NAME</string>
+    <key>CFBundleExecutable</key>        <string>$NAME</string>
+    <key>CFBundleIdentifier</key>        <string>$BUNDLE_ID</string>
+    <key>CFBundlePackageType</key>       <string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>$VERSION</string>
+    <key>CFBundleVersion</key>           <string>$VERSION</string>
+    <key>LSMinimumSystemVersion</key>    <string>$MIN_MACOS</string>
+    <key>NSHighResolutionCapable</key>   <true/>
+    <!-- No Dock icon, no app switcher entry: this lives in the menu bar. -->
+    <key>LSUIElement</key>               <true/>
+</dict>
+</plist>
+PLIST
+
+echo "built $APP"
+lipo -archs "$APP/Contents/MacOS/$NAME"

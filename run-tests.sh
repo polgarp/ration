@@ -5,5 +5,5 @@ cd "$(dirname "$0")" || exit 1
 set -e
 OUT=.build
 mkdir -p "$OUT"
-swiftc -O -o "$OUT/tests" Sources/Core/*.swift Tests/Harness.swift Tests/MetricsTests.swift Tests/SnapshotTests.swift Tests/main.swift
+swiftc -O -o "$OUT/tests" Sources/Core/*.swift Tests/Harness.swift Tests/MetricsTests.swift Tests/SnapshotTests.swift Tests/FormatTests.swift Tests/MenuModelTests.swift Tests/main.swift
 "$OUT/tests"
