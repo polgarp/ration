@@ -24,6 +24,13 @@ final class MenuBarController: NSObject {
     /// refreshInterval, so this tolerates several missed beats.
     private let staleAfter: TimeInterval = 90
 
+    /// A countdown has to tick every second; nothing else here changes faster
+    /// than the tap writes. Waking once a second forever is a battery cost an
+    /// always-running menu bar app has no reason to pay.
+    private let idleTick: TimeInterval = 5
+    private let countdownTick: TimeInterval = 1
+    private var currentTick: TimeInterval = 0
+
     init(snapshotURL: URL) {
         self.snapshotURL = snapshotURL
         super.init()
@@ -39,10 +46,18 @@ final class MenuBarController: NSObject {
         // descriptor would point at a dead inode after every write and need
         // re-arming. Countdowns must re-render every second anyway, and
         // comparing an mtime is one stat() — cheaper than being clever.
-        let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
+        schedule(every: idleTick)
+    }
+
+    private func schedule(every interval: TimeInterval) {
+        guard interval != currentTick else { return }
+        timer?.invalidate()
+        currentTick = interval
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             self?.reload()
             self?.render()
         }
+        // .common so the timer keeps firing while a menu is tracking.
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
     }
@@ -66,6 +81,8 @@ final class MenuBarController: NSObject {
 
         renderBar(now: now, stale: stale)
         renderMenu(now: now)
+        // Only a live countdown needs second-by-second wake-ups.
+        schedule(every: MenuModel.bar(snapshot, now: now).backIn == nil ? idleTick : countdownTick)
     }
 
     /// The bar is redrawn every second for the countdown; the dropdown is not.
@@ -166,7 +183,7 @@ final class MenuBarController: NSObject {
                 .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
                 .foregroundColor: NSColor.secondaryLabelColor
             ]))
-            return item(dot)
+            return item(dot, spoken: MenuModel.spokenRow(row))
 
         case .note(let text):
             return item(NSAttributedString(string: text, attributes: [
@@ -186,7 +203,7 @@ final class MenuBarController: NSObject {
             ])
             s.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor,
                            range: NSRange(location: 0, length: label.utf16.count))
-            return item(s)
+            return item(s, spoken: MenuModel.spokenRow(row))
         }
     }
 
@@ -266,9 +283,12 @@ final class MenuBarController: NSObject {
         }
     }
 
-    private func item(_ title: NSAttributedString) -> NSMenuItem {
+    private func item(_ title: NSAttributedString, spoken: String? = nil) -> NSMenuItem {
         let item = NSMenuItem(title: title.string, action: nil, keyEquivalent: "")
         item.attributedTitle = title
+        // The tab stop that aligns the value column reads as a gap, and the
+        // dot on a status row carries no meaning aloud.
+        if let spoken, !spoken.isEmpty { item.setAccessibilityLabel(spoken) }
         return item
     }
 }

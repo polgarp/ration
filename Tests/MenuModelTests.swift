@@ -138,4 +138,32 @@ func runMenuModelTests(_ t: Harness) {
     t.expect("says nothing when the check has not landed",
              rows(snap(session: 29, week: 7), service: nil)
                 .contains(where: { if case .status = $0 { return true }; return false }), false)
+
+    t.describe("accessibility — the bar reads as a sentence, not as digits")
+    // VoiceOver on the status item announced only "12%", with no clue what the
+    // number counts or that the disc beside it means anything.
+    t.expect("names the app, the window and the direction",
+             MenuModel.spoken(snap(session: 29, week: 12, weekElapsed: 0.1), now: now, formatting: fmt),
+             "Ration. Week 12 percent used, 2 ahead of pace. Session 29 percent used.")
+    t.expect("a spent session says when you are back",
+             MenuModel.spoken(snap(session: 100, sessionResetsIn: 4320, week: 12, weekElapsed: 0.1),
+                              now: now, formatting: fmt),
+             "Ration. Week 12 percent used, 2 ahead of pace. "
+             + "Session spent, back \(fmt.when(now.addingTimeInterval(4320), now: now)).")
+    t.expect("no data says so rather than reading a dash",
+             MenuModel.spoken(nil, now: now, formatting: fmt), "Ration. Not set up.")
+    t.expect("a service problem is announced first",
+             MenuModel.spoken(snap(session: 29, week: 12), now: now, formatting: fmt,
+                              service: ServiceStatus(claudeCode: .outage)),
+             "Ration. Claude Code is down. Week 12 percent used, 38 under pace. Session 29 percent used.")
+
+    t.describe("accessibility — each row reads without its tab")
+    // Rows are laid out with a tab stop, which VoiceOver reads as a gap.
+    t.expect("label and value are joined into a phrase",
+             MenuModel.spokenRow(.stat("Week", "12% used · on pace")), "Week: 12% used, on pace")
+    t.expect("a continuation row carries no stray colon",
+             MenuModel.spokenRow(.stat("", "resets Mon 01:00")), "resets Mon 01:00")
+    t.expect("status rows say the level, so colour is never the only signal",
+             MenuModel.spokenRow(.status("Claude Code operational", .operational)),
+             "Claude Code operational")
 }

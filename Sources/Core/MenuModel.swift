@@ -107,6 +107,50 @@ public enum MenuModel {
         return now.timeIntervalSince(capturedAt) > staleAfter
     }
 
+    // MARK: Accessibility
+
+    /// What VoiceOver announces for the status item.
+    ///
+    /// The bar itself is a disc and a bare percentage: sighted users get the
+    /// direction from the fill, and everyone else got "12%" with no clue what
+    /// it counted.
+    public static func spoken(_ s: Snapshot?, now: Date, formatting: Formatting,
+                              service: ServiceStatus? = nil) -> String {
+        var parts = ["Ration."]
+        if let service, service.isNoteworthy { parts.append(service.summary + ".") }
+
+        guard let s else { return (parts + ["Not set up."]).joined(separator: " ") }
+
+        if let week = s.sevenDay, !week.hasRolledOver(at: now) {
+            let pace = Metrics.weeklyPace(week, now: now)
+            // "plus 2 ahead of pace" is redundant aloud; "ahead" already
+            // carries the sign the glyph carries visually.
+            let spokenPace = Format.pace(pace).replacingOccurrences(of: "+", with: "")
+            parts.append("Week \(Int(week.usedPercentage.rounded())) percent used, \(spokenPace).")
+        }
+        if let session = s.fiveHour, !session.hasRolledOver(at: now) {
+            parts.append(session.usedPercentage >= sessionSpentAt
+                ? "Session spent, back \(formatting.when(session.resetsAt, now: now))."
+                : "Session \(Int(session.usedPercentage.rounded())) percent used.")
+        }
+        if parts.count == 1 { parts.append("Waiting for a fresh reading.") }
+        return parts.joined(separator: " ")
+    }
+
+    /// A menu row as a phrase. Rows are laid out with a tab stop, which reads
+    /// as a gap rather than as the column break it looks like.
+    public static func spokenRow(_ row: MenuRow) -> String {
+        switch row {
+        case .headline(let text), .note(let text), .status(let text, _):
+            return text
+        case .stat(let label, let value):
+            let phrase = value.replacingOccurrences(of: " · ", with: ", ")
+            return label.isEmpty ? phrase : "\(label): \(phrase)"
+        case .separator:
+            return ""
+        }
+    }
+
     // MARK: Rows
 
     public static func rows(_ s: Snapshot?, now: Date, staleAfter: TimeInterval,

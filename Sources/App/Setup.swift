@@ -56,9 +56,18 @@ enum Setup {
         }
     }
 
+    private static var cachedState: (modified: Date?, state: Installer.State)?
+
+    /// Cached against settings.json's modification date: the menu bar asks on
+    /// every tick, and re-reading and re-parsing an unchanged file forever is
+    /// work an always-running app should not be doing.
     static func currentState() -> Installer.State {
+        let modified = FileFreshness.modificationDate(of: settingsURL)
+        if let cached = cachedState, cached.modified == modified { return cached.state }
         let data = (try? Data(contentsOf: settingsURL)) ?? Data("{}".utf8)
-        return Installer.inspect(data, tap: resolvedTapCommand)
+        let state = Installer.inspect(data, tap: resolvedTapCommand)
+        cachedState = (modified, state)
+        return state
     }
 
     /// Recorded in Ration's own preferences, never in the user's settings
@@ -98,6 +107,7 @@ enum Setup {
         // a failed install would make a later uninstall strip a refreshInterval
         // it never added.
         UserDefaults.standard.set(addedRefresh, forKey: addedRefreshKey)
+        cachedState = nil
     }
 
     static func uninstall() throws {
@@ -112,6 +122,7 @@ enum Setup {
         try? FileManager.default.removeItem(at: tapURL)
         try? FileManager.default.removeItem(at: snapshotURL)
         UserDefaults.standard.removeObject(forKey: addedRefreshKey)
+        cachedState = nil
     }
 
     /// Keeps one backup per day rather than one per attempt, so repeated

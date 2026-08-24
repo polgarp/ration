@@ -23,7 +23,19 @@ enum Mark {
     ///   - used: 0–100, how much of the window is spent. Fill grows with this,
     ///           so ink tracks alarm rather than tracking comfort.
     ///   - overPace: whether the week is being burned faster than it elapses.
+    /// Last drawing, keyed by everything that changes it. The mark only moves
+    /// in whole percent, so a redraw per tick is redrawing the same pixels.
+    private static var cache: (key: String, image: NSImage)?
+
     static func image(style: Style, used: Double, overPace: Bool, size: CGFloat = 16) -> NSImage {
+        let key = "\(style.rawValue)-\(Int(used.rounded()))-\(overPace)-\(size)"
+        if let cache, cache.key == key { return cache.image }
+        let drawn = draw(style: style, used: used, overPace: overPace, size: size)
+        cache = (key, drawn)
+        return drawn
+    }
+
+    private static func draw(style: Style, used: Double, overPace: Bool, size: CGFloat) -> NSImage {
         let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
             NSColor.black.set()
             let u = max(0, min(100, used))

@@ -35,7 +35,8 @@ if CommandLine.arguments.contains("--dump") {
         service = ServiceStatus.decode(data)
     }
     let now = Date()
-    print("bar: \(MenuModel.barText(MenuModel.bar(snapshot, now: now)))")
+    print("bar:    \(MenuModel.barText(MenuModel.bar(snapshot, now: now)))")
+    print("spoken: \(MenuModel.spoken(snapshot, now: now, formatting: Formatting(), service: service))")
     for row in MenuModel.rows(snapshot, now: now, staleAfter: 90, service: service) {
         switch row {
         case .headline(let s):    print("  \(s)")
