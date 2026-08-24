@@ -1,0 +1,8 @@
+{
+  "model": "opus",
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/claude-usage-tap.sh bash ~/.claude/statusline.sh",
+    "refreshInterval": 10
+  }
+}

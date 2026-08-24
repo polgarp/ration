@@ -25,17 +25,44 @@ if CommandLine.arguments.contains("--dump") {
         Thread.sleep(forTimeInterval: 0.2)
     }
     let snapshot = store.best
+
+    // The monitor is async and belongs to the running app; the debug path just
+    // asks once, synchronously, so the dump shows what the menu would.
+    var service: ServiceStatus?
+    if let data = try? Data(contentsOf: URL(string: "https://status.claude.com/api/v2/summary.json")!) {
+        service = ServiceStatus.decode(data)
+    }
     let now = Date()
     print("bar: \(MenuModel.barText(MenuModel.bar(snapshot, now: now)))")
-    for row in MenuModel.rows(snapshot, now: now, staleAfter: 90) {
+    for row in MenuModel.rows(snapshot, now: now, staleAfter: 90, service: service) {
         switch row {
         case .headline(let s):    print("  \(s)")
         case .stat(let l, let v): print("  \(l.padding(toLength: max(8, l.count), withPad: " ", startingAt: 0)) \(v)")
         case .note(let s):        print("  \(s)")
+        case .status(let s, let l): print("  ● \(s) [\(l)]")
         case .separator:          print("  ──────────")
         }
     }
     exit(0)
+}
+
+// Scriptable equivalents of the menu items, and how the installer is tested.
+if CommandLine.arguments.contains("--status") {
+    switch Setup.currentState() {
+    case .notConfigured:      print("not configured")
+    case .wrapped:            print("wrapped")
+    case .unwrapped(let c):   print("unwrapped: \(c)")
+    case .unreadable:         print("unreadable")
+    }
+    exit(0)
+}
+if CommandLine.arguments.contains("--install") {
+    do { try Setup.install(); print("installed"); exit(0) }
+    catch { FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8)); exit(1) }
+}
+if CommandLine.arguments.contains("--uninstall") {
+    do { try Setup.uninstall(); print("uninstalled"); exit(0) }
+    catch { FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8)); exit(1) }
 }
 
 let app = NSApplication.shared

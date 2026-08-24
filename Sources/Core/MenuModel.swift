@@ -30,6 +30,8 @@ public enum MenuRow: Equatable {
     case headline(String)
     case stat(String, String)
     case note(String)
+    /// Carries a level so the view can draw a semantic dot.
+    case status(String, ServiceStatus.Level)
     case separator
 }
 
@@ -82,7 +84,10 @@ public enum MenuModel {
 
     /// The conclusion, in words — and always naming which window it is about,
     /// because a bare "Comfortable" leaves you asking comfortable about what.
-    public static func headline(_ s: Snapshot?, now: Date, formatting: Formatting) -> String {
+    public static func headline(_ s: Snapshot?, now: Date, formatting: Formatting,
+                                service: ServiceStatus? = nil) -> String {
+        // If Claude itself is down, your quota is beside the point.
+        if let service, service.isNoteworthy { return service.summary }
         guard let s else { return "Not set up" }
         if let session = s.fiveHour, !session.hasRolledOver(at: now),
            session.usedPercentage >= sessionSpentAt {
@@ -105,13 +110,21 @@ public enum MenuModel {
     // MARK: Rows
 
     public static func rows(_ s: Snapshot?, now: Date, staleAfter: TimeInterval,
-                            formatting: Formatting = Formatting()) -> [MenuRow] {
+                            formatting: Formatting = Formatting(),
+                            service: ServiceStatus? = nil) -> [MenuRow] {
         guard let s else {
             return [.headline("Not set up"), .separator,
                     .note("Install the status line tap to start")]
         }
 
-        var rows: [MenuRow] = [.headline(headline(s, now: now, formatting: formatting)), .separator]
+        var rows: [MenuRow] = [.headline(headline(s, now: now, formatting: formatting, service: service)),
+                               .separator]
+        // A problem is repeated as a row so it reads as a distinct fact rather
+        // than only as a headline that displaced the usage conclusion.
+        if let service, service.isNoteworthy {
+            rows.append(.status(service.summary, service.claudeCode))
+            rows.append(.separator)
+        }
 
         if s.fiveHour == nil && s.sevenDay == nil && s.extra.isEmpty {
             rows.append(.note("Needs a Claude Pro or Max subscription"))
@@ -136,6 +149,12 @@ public enum MenuModel {
         }
 
         rows.append(.separator)
+        // When all is well the confirmation stays small and last: enough to see
+        // the watch is running, not enough to be told daily that nothing is
+        // wrong.
+        if let service, !service.isNoteworthy {
+            rows.append(.status(service.summary, service.claudeCode))
+        }
         rows.append(freshness(s, now: now, staleAfter: staleAfter))
         return rows
     }

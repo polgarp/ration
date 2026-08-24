@@ -1,0 +1,39 @@
+{
+  "status": {
+    "indicator": "minor",
+    "description": "Partially Degraded Service"
+  },
+  "components": [
+    {
+      "name": "claude.ai",
+      "status": "operational"
+    },
+    {
+      "name": "Claude Console (platform.claude.com)",
+      "status": "operational"
+    },
+    {
+      "name": "Claude API (api.anthropic.com)",
+      "status": "operational"
+    },
+    {
+      "name": "Claude Code",
+      "status": "degraded_performance"
+    },
+    {
+      "name": "Claude Cowork",
+      "status": "operational"
+    },
+    {
+      "name": "Claude for Government",
+      "status": "operational"
+    }
+  ],
+  "incidents": [
+    {
+      "name": "Elevated error rates on Claude Code",
+      "status": "investigating",
+      "impact": "minor"
+    }
+  ]
+}

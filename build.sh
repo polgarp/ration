@@ -23,6 +23,12 @@ done
 lipo -create -output "$APP/Contents/MacOS/$NAME" "$OUT/$NAME-arm64" "$OUT/$NAME-x86_64"
 rm -f "$OUT/$NAME-arm64" "$OUT/$NAME-x86_64"
 
+# The tap ships inside the bundle so a user who downloads the app has it.
+# It is installed to ~/.claude/ rather than run from here: if it lived in the
+# bundle, deleting the app would break the user's status line.
+cp tap/claude-usage-tap.sh "$APP/Contents/Resources/claude-usage-tap.sh"
+chmod +x "$APP/Contents/Resources/claude-usage-tap.sh"
+
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

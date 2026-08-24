@@ -1,0 +1,39 @@
+{
+  "status": {
+    "indicator": "critical",
+    "description": "Major Service Outage"
+  },
+  "components": [
+    {
+      "name": "claude.ai",
+      "status": "operational"
+    },
+    {
+      "name": "Claude Console (platform.claude.com)",
+      "status": "operational"
+    },
+    {
+      "name": "Claude API (api.anthropic.com)",
+      "status": "operational"
+    },
+    {
+      "name": "Claude Code",
+      "status": "major_outage"
+    },
+    {
+      "name": "Claude Cowork",
+      "status": "operational"
+    },
+    {
+      "name": "Claude for Government",
+      "status": "operational"
+    }
+  ],
+  "incidents": [
+    {
+      "name": "Claude Code unavailable",
+      "status": "identified",
+      "impact": "critical"
+    }
+  ]
+}

@@ -20,8 +20,8 @@ func runMenuModelTests(_ t: Harness) {
             extra: extra,
             capturedAt: now.addingTimeInterval(-age))
     }
-    func rows(_ s: Snapshot?) -> [MenuRow] {
-        MenuModel.rows(s, now: now, staleAfter: 90, formatting: fmt)
+    func rows(_ s: Snapshot?, service: ServiceStatus? = nil) -> [MenuRow] {
+        MenuModel.rows(s, now: now, staleAfter: 90, formatting: fmt, service: service)
     }
     func bar(_ s: Snapshot?) -> BarContent { MenuModel.bar(s, now: now) }
 
@@ -110,4 +110,32 @@ func runMenuModelTests(_ t: Harness) {
     t.expect("flags the reading", MenuModel.isStale(old, now: now, staleAfter: 90), true)
     t.expect("fresh readings are not stale",
              MenuModel.isStale(snap(session: 10, week: 7, age: 5), now: now, staleAfter: 90), false)
+
+    t.describe("service health — quiet when everything is fine")
+    // A row saying "all is well" every single day is noise. It stays, but small
+    // and at the bottom, so you can see the watch is running without being told
+    // something you already assumed.
+    let healthy = rows(snap(session: 29, week: 7), service: ServiceStatus(claudeCode: .operational))
+    t.expect("the headline still belongs to the week", healthy.first, .headline("Week on pace"))
+    t.expect("a quiet confirmation sits at the end",
+             healthy.contains(.status("Claude Code operational", .operational)), true)
+
+    t.describe("service health — loud when it is not")
+    // If Claude is down, your quota is beside the point. It takes the headline.
+    let down = rows(snap(session: 29, week: 7), service: ServiceStatus(claudeCode: .outage))
+    t.expect("an outage outranks every usage conclusion", down.first, .headline("Claude Code is down"))
+    t.expect("and is repeated as a status row",
+             down.contains(.status("Claude Code is down", .outage)), true)
+
+    t.describe("service health — an outage outranks even a spent session")
+    let both = rows(snap(session: 100, sessionResetsIn: 4320, week: 7),
+                    service: ServiceStatus(claudeCode: .degraded))
+    t.expect("degradation leads", both.first, .headline("Claude Code degraded"))
+
+    t.describe("service health — no reading at all")
+    // The status page being unreachable is our problem, not Anthropic's, and
+    // is not worth a row.
+    t.expect("says nothing when the check has not landed",
+             rows(snap(session: 29, week: 7), service: nil)
+                .contains(where: { if case .status = $0 { return true }; return false }), false)
 }

@@ -1,0 +1,33 @@
+{
+  "status": {
+    "indicator": "none",
+    "description": "All Systems Operational"
+  },
+  "components": [
+    {
+      "name": "claude.ai",
+      "status": "operational"
+    },
+    {
+      "name": "Claude Console (platform.claude.com)",
+      "status": "operational"
+    },
+    {
+      "name": "Claude API (api.anthropic.com)",
+      "status": "operational"
+    },
+    {
+      "name": "Claude Code",
+      "status": "operational"
+    },
+    {
+      "name": "Claude Cowork",
+      "status": "operational"
+    },
+    {
+      "name": "Claude for Government",
+      "status": "operational"
+    }
+  ],
+  "incidents": []
+}

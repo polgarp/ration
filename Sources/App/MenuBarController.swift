@@ -13,6 +13,7 @@ final class MenuBarController: NSObject {
     private var lastModified: Date?
     private var timer: Timer?
     private let formatting = Formatting()
+    private let service = ServiceMonitor()
 
     /// Older than this means Claude Code is not running. The tap fires on a 10s
     /// refreshInterval, so this tolerates several missed beats.
@@ -24,6 +25,9 @@ final class MenuBarController: NSObject {
 
         reload()
         render()
+
+        service.onUpdate = { [weak self] in self?.render() }
+        service.start()
 
         // One timer does both jobs. A DispatchSource vnode watch is the obvious
         // choice, but the tap replaces the file by atomic rename, so the watched
@@ -61,8 +65,19 @@ final class MenuBarController: NSObject {
         // Items carry no action, and AppKit greys actionless items unless told
         // not to — which made the entire dropdown read as disabled.
         menu.autoenablesItems = false
-        for row in MenuModel.rows(snapshot, now: now, staleAfter: staleAfter, formatting: formatting) {
+        for row in MenuModel.rows(snapshot, now: now, staleAfter: staleAfter, formatting: formatting,
+                                 service: service.status) {
             menu.addItem(view(for: row))
+        }
+        // The only actionable items in the dropdown, kept at the bottom so the
+        // reading is never competing with a control.
+        switch Setup.currentState() {
+        case .wrapped:
+            menu.addItem(action("Remove Ration's status line hook…", #selector(confirmUninstall)))
+        case .notConfigured, .unwrapped:
+            menu.addItem(action("Set up Ration…", #selector(confirmInstall)))
+        case .unreadable:
+            menu.addItem(action("settings.json needs fixing…", #selector(explainUnreadable)))
         }
         menu.addItem(NSMenuItem(title: "Quit Ration",
                                 action: #selector(NSApplication.terminate(_:)),
@@ -118,6 +133,19 @@ final class MenuBarController: NSObject {
                 .foregroundColor: NSColor.labelColor
             ]))
 
+        case .status(let text, let level):
+            // Semantic colour on the dot only; the text stays in the menu's own
+            // ink so a healthy row reads as quiet rather than decorated.
+            let dot = NSMutableAttributedString(string: "● ", attributes: [
+                .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+                .foregroundColor: colour(for: level)
+            ])
+            dot.append(NSAttributedString(string: text, attributes: [
+                .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+                .foregroundColor: NSColor.secondaryLabelColor
+            ]))
+            return item(dot)
+
         case .note(let text):
             return item(NSAttributedString(string: text, attributes: [
                 .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
@@ -137,6 +165,82 @@ final class MenuBarController: NSObject {
             s.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor,
                            range: NSRange(location: 0, length: label.utf16.count))
             return item(s)
+        }
+    }
+
+    // MARK: - Setup
+
+    private func action(_ title: String, _ selector: Selector) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: selector, keyEquivalent: "")
+        item.target = self
+        return item
+    }
+
+    @objc private func confirmInstall() {
+        let state = Setup.currentState()
+        let alert = NSAlert()
+        alert.messageText = "Set up Ration"
+        // Show the exact strings that will be written. Nothing is changed
+        // without the user reading precisely what changes.
+        alert.informativeText = Installer.preview(for: state, tap: Setup.resolvedTapCommand)
+            + "\n\nYour settings.json is backed up first."
+        alert.addButton(withTitle: "Set up")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        do {
+            try Setup.install()
+            report("Ration is set up.",
+                   "Usage will appear within a few seconds. Existing Claude Code sessions "
+                 + "pick up the change on their next status line refresh.")
+        } catch {
+            report("Nothing was changed.", error.localizedDescription, style: .warning)
+        }
+    }
+
+    @objc private func confirmUninstall() {
+        let alert = NSAlert()
+        alert.messageText = "Remove Ration's status line hook?"
+        alert.informativeText = "Your own status line command is restored exactly as it was. "
+            + "The tap script and saved usage data are deleted. Ration keeps running but "
+            + "will have nothing to show."
+        alert.addButton(withTitle: "Remove")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        do {
+            try Setup.uninstall()
+            report("Removed.", "Your status line is back to what it was.")
+        } catch {
+            report("Nothing was changed.", error.localizedDescription, style: .warning)
+        }
+    }
+
+    @objc private func explainUnreadable() {
+        report("settings.json could not be parsed",
+               "Ration will not modify a settings file it cannot read, because a wrong guess "
+             + "would break Claude Code. Fix ~/.claude/settings.json by hand, then try again.",
+               style: .warning)
+    }
+
+    private func report(_ title: String, _ detail: String, style: NSAlert.Style = .informational) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = detail
+        alert.alertStyle = style
+        alert.addButton(withTitle: "OK")
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
+    }
+
+    private func colour(for level: ServiceStatus.Level) -> NSColor {
+        switch level {
+        case .operational:            return .systemGreen
+        case .degraded, .maintenance: return .systemOrange
+        case .outage:                 return .systemRed
+        case .unknown:                return .secondaryLabelColor
         }
     }
 
