@@ -348,8 +348,8 @@ HTML = """<title>Ration's Menu Bar Mark</title>
 
 def main():
     html = (HTML
-            .replace("__SHEET_LIGHT__", uri("sheet-light.png"))
-            .replace("__SHEET_DARK__", uri("sheet-dark.png"))
+            .replace("__SHEET_LIGHT__", uri("marks-light.png"))
+            .replace("__SHEET_DARK__", uri("marks-dark.png"))
             .replace("__SHEET2_LIGHT__", uri("marks2-light.png"))
             .replace("__SHEET2_DARK__", uri("marks2-dark.png"))
             .replace("__LIVE__", uri("menubar-live.png")))
