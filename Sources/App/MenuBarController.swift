@@ -57,6 +57,17 @@ final class MenuBarController: NSObject {
         // Monospaced digits so the item doesn't jitter as the number changes.
         // Colours come from semantic NSColors, which resolve correctly in both
         // light and dark menu bars without a second palette.
+        // The mark carries spend level and the over-pace bit; the number
+        // carries precision. Splitting the job is what makes both legible.
+        if let sevenDay = snapshot?.sevenDay {
+            let pace = Metrics.weeklyPace(sevenDay, now: now)
+            statusItem.button?.image = Mark.image(style: Mark.Style.fromEnvironment(),
+                                                  used: sevenDay.usedPercentage,
+                                                  overPace: pace.delta > 1)
+        } else {
+            statusItem.button?.image = nil
+        }
+        statusItem.button?.imagePosition = .imageLeading
         statusItem.button?.attributedTitle = NSAttributedString(
             string: MenuModel.barTitle(snapshot),
             attributes: [
