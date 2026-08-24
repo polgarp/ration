@@ -9,13 +9,11 @@ let snapshotURL = URL(fileURLWithPath: snapshotPath)
 // `--dump` prints what the dropdown would say and exits, so states can be
 // inspected and diffed without opening a menu by hand.
 if CommandLine.arguments.contains("--dump") {
-    let snapshot = Snapshot.load(from: snapshotURL)
+    var store = SnapshotStore()
+    if let s = Snapshot.load(from: snapshotURL) { store.accept(s) }
+    let snapshot = store.best
     let now = Date()
-    switch MenuModel.bar(snapshot, now: now) {
-    case .none:                  print("bar: —")
-    case .weekRemaining(let p):  print("bar: \(Int(p))%")
-    case .backIn(let s):         print("bar: \(Format.duration(s))")
-    }
+    print("bar: \(MenuModel.barText(MenuModel.bar(snapshot, now: now)))")
     for row in MenuModel.rows(snapshot, now: now, staleAfter: 90) {
         switch row {
         case .headline(let s):    print("  \(s)")

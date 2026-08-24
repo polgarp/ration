@@ -25,26 +25,38 @@ func runMenuModelTests(_ t: Harness) {
 
     // MARK: The bar
 
-    t.describe("bar — the week owns the slot")
+    t.describe("bar — the week owns the first slot, always")
     // The status line already shows session usage while you work, so the menu
-    // bar spends its one number on the week, which nothing else reports.
-    t.expect("shows week remaining, not session", bar(snap(session: 8, week: 59)), .weekRemaining(41))
-    t.expect("nothing to show without data", bar(nil), .none)
-    t.expect("nothing to show without rate limits", bar(snap(session: nil, week: nil)), .none)
+    // bar spends its primary number on the week, which nothing else reports.
+    t.expect("shows week remaining", bar(snap(session: 8, week: 59)).weekRemaining ?? -1, 41.0)
+    t.expect("no countdown while the session has room", bar(snap(session: 8, week: 59)).backIn == nil, true)
+    t.expect("renders as a bare percentage", MenuModel.barText(bar(snap(session: 8, week: 59))), "41%")
+    t.expect("nothing at all without data", bar(nil).isEmpty, true)
+    t.expect("nothing at all without rate limits", bar(snap(session: nil, week: nil)).isEmpty, true)
+    t.expect("empty renders as a dash", MenuModel.barText(bar(nil)), "—")
 
-    t.describe("bar — the countdown takes over when the session is spent")
-    // Being rate-limited is the moment the menu bar matters most, and it is
-    // also the moment Claude Code is closed and the reading is going stale.
-    t.expect("a spent session replaces the percentage with time until you are back",
-             bar(snap(session: 100, sessionResetsIn: 4320, week: 59)), .backIn(4320))
-    t.expect("still the week while the session has room",
-             bar(snap(session: 90, week: 59)), .weekRemaining(41))
+    t.describe("bar — a spent session appends, never replaces")
+    // Replacing the number made the bar change units, so a glance could not
+    // tell which reading it was looking at. The week keeps its slot; the
+    // countdown arrives beside it.
+    let locked = bar(snap(session: 100, sessionResetsIn: 4320, week: 59))
+    t.expect("the week is still there", locked.weekRemaining ?? -1, 41.0)
+    t.expect("with the countdown beside it", locked.backIn ?? -1, 4320)
+    t.expect("rendered in that order", MenuModel.barText(locked), "41% · 1h 12m")
+
+    t.describe("bar — a rolled-over week keeps the countdown's position")
+    let rolledWeek = Snapshot(
+        fiveHour: UsageWindow(usedPercentage: 100, resetsAt: now.addingTimeInterval(4320)),
+        sevenDay: UsageWindow(usedPercentage: 82, resetsAt: now.addingTimeInterval(-60)),
+        capturedAt: now)
+    t.expect("the week slot is empty, not missing",
+             MenuModel.barText(bar(rolledWeek)), "— · 1h 12m")
 
     t.describe("bar — the glyph and the number must agree")
-    // Both halves report the same window. A disc drawn from the week beside a
-    // session percentage was actively misleading.
+    // Both report the week. A disc drawn from the week beside a session
+    // percentage was actively misleading.
     t.expect("glyph reads the week", MenuModel.markUsage(snap(session: 8, week: 59)) ?? -1, 59.0)
-    t.expect("glyph still reads the week when the countdown is showing",
+    t.expect("glyph still reads the week when locked out",
              MenuModel.markUsage(snap(session: 100, week: 59)) ?? -1, 59.0)
 
     // MARK: The headline
@@ -115,7 +127,7 @@ func runMenuModelTests(_ t: Harness) {
              rows(rolled).contains(where: { if case .stat(_, let v) = $0 { return v.contains("in now") }; return false }), false)
     t.expect("no pace claim from a window that has ended",
              MenuModel.headline(rolled, now: now), "Waiting for a fresh reading")
-    t.expect("and the bar has nothing honest to show", bar(rolled), .none)
+    t.expect("and the bar has nothing honest to show", bar(rolled).isEmpty, true)
 
     t.describe("staleness — the percentages rot, the reset time does not")
     let old = snap(session: 10, week: 59, weekElapsed: 0.68, age: 3600)

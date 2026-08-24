@@ -1,18 +1,26 @@
 import Foundation
 
-/// What the menu bar's single number says.
+/// What the menu bar shows: two slots, either of which may be empty.
 ///
-/// The week owns the slot by default: Claude Code's own status line already
-/// shows session usage on screen while you work, so a session percentage here
-/// would be a second copy of a number you are already looking at. The week is
-/// the number nothing else reports.
-public enum BarContent: Equatable {
-    case none
-    case weekRemaining(Double)
-    /// Time until the session resets. Takes over when you are locked out —
-    /// which is both the moment this matters most and the moment Claude Code
-    /// is closed, so the percentages are going stale while this stays exact.
-    case backIn(TimeInterval)
+/// The week owns the first slot permanently. Claude Code's own status line
+/// already shows session usage on screen while you work, so a session
+/// percentage here would be a second copy of a number you are already looking
+/// at — the week is the number nothing else reports.
+///
+/// The countdown *appends*, it never replaces. An earlier version swapped the
+/// percentage out for the countdown, which meant the same slot changed units
+/// and a glance could not tell which reading it was seeing.
+public struct BarContent: Equatable {
+    public let weekRemaining: Double?
+    /// Time until the session resets, present only once you are locked out.
+    public let backIn: TimeInterval?
+
+    public var isEmpty: Bool { weekRemaining == nil && backIn == nil }
+
+    public init(weekRemaining: Double?, backIn: TimeInterval?) {
+        self.weekRemaining = weekRemaining
+        self.backIn = backIn
+    }
 }
 
 public enum MenuRow: Equatable {
@@ -35,13 +43,28 @@ public enum MenuModel {
     // MARK: Bar
 
     public static func bar(_ s: Snapshot?, now: Date) -> BarContent {
-        guard let s else { return .none }
+        guard let s else { return BarContent(weekRemaining: nil, backIn: nil) }
+
+        var week: Double?
+        if let w = s.sevenDay, !w.hasRolledOver(at: now) {
+            week = max(0, 100 - w.usedPercentage).rounded()
+        }
+
+        var backIn: TimeInterval?
         if let session = s.fiveHour, !session.hasRolledOver(at: now),
            session.usedPercentage >= sessionSpentAt {
-            return .backIn(max(0, session.resetsAt.timeIntervalSince(now)))
+            backIn = max(0, session.resetsAt.timeIntervalSince(now))
         }
-        guard let week = s.sevenDay, !week.hasRolledOver(at: now) else { return .none }
-        return .weekRemaining(max(0, 100 - week.usedPercentage).rounded())
+
+        return BarContent(weekRemaining: week, backIn: backIn)
+    }
+
+    /// The bar's text. A missing week still renders its slot as a dash, so the
+    /// countdown never slides into the position the percentage normally holds.
+    public static func barText(_ content: BarContent) -> String {
+        let week = content.weekRemaining.map { "\(Int($0))%" }
+        guard let backIn = content.backIn else { return week ?? "—" }
+        return "\(week ?? "—") · \(Format.duration(backIn))"
     }
 
     /// What the mark is drawn from — always the week, so the glyph and the

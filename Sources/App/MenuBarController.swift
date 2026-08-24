@@ -8,7 +8,8 @@ final class MenuBarController: NSObject {
 
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let snapshotURL: URL
-    private var snapshot: Snapshot?
+    private var store = SnapshotStore()
+    private var snapshot: Snapshot? { store.best }
     private var lastModified: Date?
     private var timer: Timer?
 
@@ -42,7 +43,10 @@ final class MenuBarController: NSObject {
             .contentModificationDate
         guard modified != lastModified else { return }
         lastModified = modified
-        snapshot = Snapshot.load(from: snapshotURL)
+        // Every Claude Code session writes this same file, and an idle one
+        // rebroadcasts expired windows. The store keeps whichever reading is
+        // actually newest rather than whichever landed last.
+        if let incoming = Snapshot.load(from: snapshotURL) { store.accept(incoming) }
     }
 
     // MARK: - Rendering
@@ -79,31 +83,33 @@ final class MenuBarController: NSObject {
         button.imagePosition = .imageLeading
 
         let content = MenuModel.bar(snapshot, now: now)
-        let text: String
+        let text = MenuModel.barText(content)
+
+        let title = NSMutableAttributedString(string: text, attributes: [
+            .foregroundColor: NSColor.labelColor,
+            // Monospaced digits so the item doesn't jitter as it counts down.
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 0, weight: .regular)
+        ])
+
         // Staleness does not rot everything equally. A percentage from an hour
         // ago is genuinely unknown, so it dims. `resets_at` is an absolute
         // timestamp, so a countdown derived from it stays exact however old the
         // snapshot is — and being locked out is precisely when Claude Code is
-        // closed and the snapshot is going stale. Dimming it would hide the one
-        // number still worth trusting.
-        var dimmed = stale
-        switch content {
-        case .none:
-            text = "—"
-        case .weekRemaining(let pct):
-            text = "\(Int(pct))%"
-        case .backIn(let seconds):
-            text = Format.duration(seconds)
-            dimmed = false
+        // closed and the snapshot goes stale. Dimming the one number still
+        // worth trusting would be exactly backwards.
+        if stale {
+            title.addAttribute(.foregroundColor, value: NSColor.tertiaryLabelColor,
+                               range: NSRange(location: 0, length: title.length))
+            if let backIn = content.backIn {
+                let countdown = Format.duration(backIn)
+                if let r = text.range(of: countdown, options: .backwards) {
+                    title.addAttribute(.foregroundColor, value: NSColor.labelColor,
+                                       range: NSRange(r, in: text))
+                }
+            }
         }
 
-        button.attributedTitle = NSAttributedString(
-            string: text,
-            attributes: [
-                .foregroundColor: dimmed ? NSColor.tertiaryLabelColor : NSColor.labelColor,
-                // Monospaced digits so the item doesn't jitter as it counts down.
-                .font: NSFont.monospacedDigitSystemFont(ofSize: 0, weight: .regular)
-            ])
+        button.attributedTitle = title
     }
 
     // MARK: - Rows
