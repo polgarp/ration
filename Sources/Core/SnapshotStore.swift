@@ -27,9 +27,24 @@ public struct SnapshotStore {
         // window in this payload was rejected, nothing new arrived and the
         // reading must be allowed to go stale — even though some process is
         // still dutifully writing the file every 10 seconds.
-        let learned = fiveHour.accepted || sevenDay.accepted
+        // Extra buckets are server-labelled and may appear or vanish between
+        // payloads, so they merge by label under the same newest-wins rule.
+        var buckets: [String: UsageWindow] = [:]
+        for b in current.extra { buckets[b.label] = b.window }
+        var adoptedBucket = false
+        for b in incoming.extra {
+            let merged = newer(buckets[b.label], b.window)
+            buckets[b.label] = merged.window
+            adoptedBucket = adoptedBucket || merged.accepted
+        }
+        let extra = buckets
+            .map { NamedWindow(label: $0.key, window: $0.value) }
+            .sorted { $0.label < $1.label }
+
+        let learned = fiveHour.accepted || sevenDay.accepted || adoptedBucket
         best = Snapshot(fiveHour: fiveHour.window,
                         sevenDay: sevenDay.window,
+                        extra: extra,
                         capturedAt: learned ? incoming.capturedAt : current.capturedAt)
     }
 

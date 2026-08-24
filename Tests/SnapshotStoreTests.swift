@@ -57,4 +57,21 @@ func runSnapshotStoreTests(_ t: Harness) {
     t.expectNil("empty to begin with", fresh.best)
     fresh.accept(Snapshot(fiveHour: w(20, resetsIn: 3600), sevenDay: nil, capturedAt: now))
     t.expectNotNil("populated after one write", fresh.best)
+
+    t.describe("SnapshotStore — extra buckets follow the same rule")
+    var buckets = SnapshotStore()
+    let fresh1 = NamedWindow(label: "Fable", window: w(12, resetsIn: 200_000))
+    let stale1 = NamedWindow(label: "Fable", window: w(80, resetsIn: -200_000))
+    buckets.accept(Snapshot(fiveHour: nil, sevenDay: nil, extra: [fresh1], capturedAt: now))
+    buckets.accept(Snapshot(fiveHour: nil, sevenDay: nil, extra: [stale1],
+                            capturedAt: now.addingTimeInterval(10)))
+    t.expect("an idle session cannot drag a bucket backwards",
+             buckets.best?.extra.first?.window.usedPercentage ?? -1, 12.0)
+
+    t.describe("SnapshotStore — a bucket seen only once is kept")
+    var appearing = SnapshotStore()
+    appearing.accept(Snapshot(fiveHour: w(20, resetsIn: 3600), sevenDay: nil, capturedAt: now))
+    appearing.accept(Snapshot(fiveHour: w(25, resetsIn: 3600), sevenDay: nil,
+                              extra: [fresh1], capturedAt: now.addingTimeInterval(10)))
+    t.expect("a newly-appearing bucket is adopted", appearing.best?.extra.count ?? -1, 1)
 }

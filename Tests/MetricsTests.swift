@@ -41,4 +41,17 @@ func runMetricsTests(_ t: Harness) {
              hot.capsOutAt ?? Date.distantPast,
              Date(timeIntervalSince1970: 1_787_418_000))
     t.expectNil("no cap-out date without a projection", brandNew.capsOutAt)
+
+    t.describe("weeklyPace — one threshold for over pace")
+    // "on pace" used |delta| < 1 while the cap-out headline triggered on any
+    // delta > 0, so a delta of 0.5 produced a dropdown that said "on pace" and
+    // a headline that said the week runs out on Sunday.
+    let marginal = Metrics.weeklyPace(UsageWindow(usedPercentage: 50.5, resetsAt: weekEnd), now: at(0.5))
+    t.expect("half a point ahead is not over pace", marginal.isOverPace, false)
+    t.expect("and claims no cap-out date", marginal.capsOutAt == nil, true)
+    t.expect("Format agrees it is on pace", Format.pace(marginal), "on pace")
+
+    let clearlyOver = Metrics.weeklyPace(UsageWindow(usedPercentage: 60, resetsAt: weekEnd), now: at(0.5))
+    t.expect("ten points ahead is over pace", clearlyOver.isOverPace, true)
+    t.expect("and does claim a cap-out date", clearlyOver.capsOutAt != nil, true)
 }

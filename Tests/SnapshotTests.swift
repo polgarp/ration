@@ -42,4 +42,25 @@ func runSnapshotTests(_ t: Harness) {
     t.expectNotNil("decodes a live capture", live)
     t.expectNotNil("with a 5-hour window", live?.fiveHour)
     t.expectNotNil("with a 7-day window", live?.sevenDay)
+
+    t.describe("Snapshot — model-scoped and per-model buckets")
+    // Undocumented but present: seven_day_opus / seven_day_sonnet, plus a
+    // model_scoped list whose display_name is server-supplied ("e.g. 'Fable'").
+    // Rendering whatever arrives, labelled however the server labels it, means
+    // new buckets need no release.
+    let scoped = decodeFixture("model-scoped")
+    t.expect("keeps the two documented windows", scoped?.fiveHour?.usedPercentage ?? -1, 29.0)
+    t.expect("picks up a per-model weekly bucket",
+             scoped?.extra.first(where: { $0.label == "Opus" })?.window.usedPercentage ?? -1, 44.0)
+    t.expect("picks up a server-labelled bucket",
+             scoped?.extra.first(where: { $0.label == "Fable" }) != nil, true)
+    // model_scoped reports a 0-1 fraction where the documented windows report 0-100.
+    t.expect("converts the fraction to a percentage",
+             scoped?.extra.first(where: { $0.label == "Fable" })?.window.usedPercentage ?? -1, 12.0)
+    t.expect("parses an ISO reset time",
+             scoped?.extra.first(where: { $0.label == "Fable" })?.window.resetsAt ?? Date.distantPast,
+             Date(timeIntervalSince1970: 1787734800))
+
+    t.describe("Snapshot — payloads without extras")
+    t.expect("no buckets is simply an empty list", decodeFixture("healthy")?.extra.count ?? -1, 0)
 }

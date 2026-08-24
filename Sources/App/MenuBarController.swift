@@ -12,6 +12,7 @@ final class MenuBarController: NSObject {
     private var snapshot: Snapshot? { store.best }
     private var lastModified: Date?
     private var timer: Timer?
+    private let formatting = Formatting()
 
     /// Older than this means Claude Code is not running. The tap fires on a 10s
     /// refreshInterval, so this tolerates several missed beats.
@@ -39,8 +40,7 @@ final class MenuBarController: NSObject {
 
     /// Re-reads the snapshot only when the file has actually changed.
     private func reload() {
-        let modified = (try? snapshotURL.resourceValues(forKeys: [.contentModificationDateKey]))?
-            .contentModificationDate
+        let modified = FileFreshness.modificationDate(of: snapshotURL)
         guard modified != lastModified else { return }
         lastModified = modified
         // Every Claude Code session writes this same file, and an idle one
@@ -58,7 +58,10 @@ final class MenuBarController: NSObject {
         renderBar(now: now, stale: stale)
 
         let menu = NSMenu()
-        for row in MenuModel.rows(snapshot, now: now, staleAfter: staleAfter) {
+        // Items carry no action, and AppKit greys actionless items unless told
+        // not to — which made the entire dropdown read as disabled.
+        menu.autoenablesItems = false
+        for row in MenuModel.rows(snapshot, now: now, staleAfter: staleAfter, formatting: formatting) {
             menu.addItem(view(for: row))
         }
         menu.addItem(NSMenuItem(title: "Quit Ration",
@@ -74,7 +77,7 @@ final class MenuBarController: NSObject {
         // can never make competing claims about different windows.
         if let used = MenuModel.markUsage(snapshot, now: now) {
             let overPace = snapshot?.sevenDay
-                .map { Metrics.weeklyPace($0, now: now).delta > 1 } ?? false
+                .map { Metrics.weeklyPace($0, now: now).isOverPace } ?? false
             button.image = Mark.image(style: Mark.Style.fromEnvironment(),
                                       used: used, overPace: overPace)
         } else {
@@ -83,33 +86,23 @@ final class MenuBarController: NSObject {
         button.imagePosition = .imageLeading
 
         let content = MenuModel.bar(snapshot, now: now)
-        let text = MenuModel.barText(content)
 
-        let title = NSMutableAttributedString(string: text, attributes: [
-            .foregroundColor: NSColor.labelColor,
+        // No explicit foreground colour. macOS dims a status item's template
+        // image when the menu bar goes inactive; text pinned to .labelColor
+        // does not follow, so the glyph and the number drifted apart. Leaving
+        // the colour to the button keeps them in step.
+        button.attributedTitle = NSAttributedString(
+            string: MenuModel.barText(content),
             // Monospaced digits so the item doesn't jitter as it counts down.
-            .font: NSFont.monospacedDigitSystemFont(ofSize: 0, weight: .regular)
-        ])
+            attributes: [.font: NSFont.monospacedDigitSystemFont(ofSize: 0, weight: .regular)])
 
-        // Staleness does not rot everything equally. A percentage from an hour
-        // ago is genuinely unknown, so it dims. `resets_at` is an absolute
-        // timestamp, so a countdown derived from it stays exact however old the
-        // snapshot is — and being locked out is precisely when Claude Code is
-        // closed and the snapshot goes stale. Dimming the one number still
+        // Staleness dims the whole item, image and text together, using the
+        // system's own treatment. The exception is a pending countdown: it is
+        // derived from an absolute `resets_at`, so it stays exact however old
+        // the snapshot is — and being locked out is precisely when Claude Code
+        // is closed and the snapshot goes stale. Dimming the one number still
         // worth trusting would be exactly backwards.
-        if stale {
-            title.addAttribute(.foregroundColor, value: NSColor.tertiaryLabelColor,
-                               range: NSRange(location: 0, length: title.length))
-            if let backIn = content.backIn {
-                let countdown = Format.duration(backIn)
-                if let r = text.range(of: countdown, options: .backwards) {
-                    title.addAttribute(.foregroundColor, value: NSColor.labelColor,
-                                       range: NSRange(r, in: text))
-                }
-            }
-        }
-
-        button.attributedTitle = title
+        button.appearsDisabled = stale && content.backIn == nil
     }
 
     // MARK: - Rows
@@ -150,7 +143,6 @@ final class MenuBarController: NSObject {
     private func item(_ title: NSAttributedString) -> NSMenuItem {
         let item = NSMenuItem(title: title.string, action: nil, keyEquivalent: "")
         item.attributedTitle = title
-        item.isEnabled = false
         return item
     }
 }

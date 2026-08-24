@@ -9,8 +9,21 @@ let snapshotURL = URL(fileURLWithPath: snapshotPath)
 // `--dump` prints what the dropdown would say and exits, so states can be
 // inspected and diffed without opening a menu by hand.
 if CommandLine.arguments.contains("--dump") {
+    // Every Claude Code session writes this file on its own 10s timer, and an
+    // idle one rebroadcasts expired windows — so a single read has a real
+    // chance of catching a stale write. Sampling across one refresh interval
+    // lets the store settle on the newest reading, the same way the running
+    // app does continuously.
     var store = SnapshotStore()
-    if let s = Snapshot.load(from: snapshotURL) { store.accept(s) }
+    var lastModified: Date?
+    for _ in 0..<55 {
+        let modified = FileFreshness.modificationDate(of: snapshotURL)
+        if modified != lastModified {
+            lastModified = modified
+            if let s = Snapshot.load(from: snapshotURL) { store.accept(s) }
+        }
+        Thread.sleep(forTimeInterval: 0.2)
+    }
     let snapshot = store.best
     let now = Date()
     print("bar: \(MenuModel.barText(MenuModel.bar(snapshot, now: now)))")

@@ -27,4 +27,15 @@ func runFormatTests(_ t: Harness) {
              Format.pace(paceAt(used: 20, fraction: 0.50)), "30 under pace")
     t.expect("within a point either way is simply on pace",
              Format.pace(paceAt(used: 50, fraction: 0.50)), "on pace")
+
+    t.describe("Formatting.when — a concrete time, not a countdown")
+    let utc = TimeZone(identifier: "UTC")!
+    var cal = Calendar(identifier: .gregorian); cal.timeZone = utc
+    let fmt = Formatting(timeZone: utc, calendar: cal)
+    let base = Date(timeIntervalSince1970: 1_787_400_000)   // Sat 22 Aug 12:00 UTC
+    func when(_ offset: TimeInterval) -> String { fmt.when(base.addingTimeInterval(offset), now: base) }
+    t.expect("later today needs no date", when(5 * 3600), "today 17:00")
+    t.expect("tomorrow says tomorrow", when(20 * 3600), "tomorrow 08:00")
+    t.expect("within the week names the day", when(3 * 86400), "Tue 12:00")
+    t.expect("further out names the date", when(9 * 86400), "Mon 31 Aug 12:00")
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-public struct UsageWindow {
+public struct UsageWindow: Equatable {
     public let usedPercentage: Double
     public let resetsAt: Date
     public init(usedPercentage: Double, resetsAt: Date) {
@@ -23,10 +23,20 @@ public struct WeeklyPace {
     public let projectedEndOfWeek: Double?
     public let capsOutAt: Date?
     public var delta: Double { usedPercentage - elapsedPercentage }
+
+    /// One threshold, used by the wording, the headline and the mark alike.
+    /// They previously disagreed: "on pace" allowed a point of slack while the
+    /// cap-out headline fired on any positive delta, so half a point ahead
+    /// produced a dropdown saying "on pace" above a headline naming the day the
+    /// week runs out.
+    public var isOverPace: Bool { delta >= Metrics.paceTolerance }
 }
 
 public enum Metrics {
     public static let weekLength: TimeInterval = 7 * 24 * 3600
+
+    /// Slack either side of perfectly on pace, below which no claim is made.
+    public static let paceTolerance: Double = 1.0
 
     /// Below this much of the window elapsed, a projection is noise, not signal.
     public static let minimumElapsedForProjection: Double = 1.0
@@ -45,7 +55,9 @@ public enum Metrics {
         if elapsed >= minimumElapsedForProjection, secondsElapsed > 0 {
             let end = used / elapsed * 100
             projected = end
-            if end > 100 {
+            // Gated on the shared tolerance, not merely on end > 100, so a
+            // hair over the line does not produce an alarming date.
+            if used - elapsed >= paceTolerance, end > 100 {
                 // Percent per second, extended until it reaches 100.
                 let rate = used / secondsElapsed
                 if rate > 0 { capsOutAt = start.addingTimeInterval(100 / rate) }

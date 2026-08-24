@@ -38,21 +38,4 @@ public enum Format {
         return "\(Int((-delta).rounded())) under pace"
     }
 
-    /// A bare time of day, for "back at 14:20".
-    public static func clock(_ date: Date, timeZone: TimeZone = .current) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.timeZone = timeZone
-        f.dateFormat = "HH:mm"
-        return f.string(from: date)
-    }
-
-    /// A weekday and time, for reset and cap-out moments.
-    public static func dayAndTime(_ date: Date, timeZone: TimeZone = .current) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.timeZone = timeZone
-        f.dateFormat = "EEE HH:mm"
-        return f.string(from: date)
-    }
 }

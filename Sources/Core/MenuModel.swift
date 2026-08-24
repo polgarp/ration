@@ -8,17 +8,20 @@ import Foundation
 /// at — the week is the number nothing else reports.
 ///
 /// The countdown *appends*, it never replaces. An earlier version swapped the
-/// percentage out for the countdown, which meant the same slot changed units
-/// and a glance could not tell which reading it was seeing.
+/// percentage out, which meant the same slot changed units and a glance could
+/// not tell which reading it was seeing.
 public struct BarContent: Equatable {
-    public let weekRemaining: Double?
+    /// Percentage **used**, not remaining: the disc fills as you spend, so the
+    /// number has to count in the same direction or the two halves of the item
+    /// move opposite ways.
+    public let weekUsed: Double?
     /// Time until the session resets, present only once you are locked out.
     public let backIn: TimeInterval?
 
-    public var isEmpty: Bool { weekRemaining == nil && backIn == nil }
+    public var isEmpty: Bool { weekUsed == nil && backIn == nil }
 
-    public init(weekRemaining: Double?, backIn: TimeInterval?) {
-        self.weekRemaining = weekRemaining
+    public init(weekUsed: Double?, backIn: TimeInterval?) {
+        self.weekUsed = weekUsed
         self.backIn = backIn
     }
 }
@@ -32,8 +35,7 @@ public enum MenuRow: Equatable {
 
 public enum MenuModel {
 
-    /// At or above this, the session is effectively gone and the countdown
-    /// becomes the useful number.
+    /// At or above this the session is effectively gone.
     public static let sessionSpentAt: Double = 99
 
     /// Said when a window has rolled over and Claude Code has not yet served a
@@ -43,12 +45,10 @@ public enum MenuModel {
     // MARK: Bar
 
     public static func bar(_ s: Snapshot?, now: Date) -> BarContent {
-        guard let s else { return BarContent(weekRemaining: nil, backIn: nil) }
+        guard let s else { return BarContent(weekUsed: nil, backIn: nil) }
 
         var week: Double?
-        if let w = s.sevenDay, !w.hasRolledOver(at: now) {
-            week = max(0, 100 - w.usedPercentage).rounded()
-        }
+        if let w = s.sevenDay, !w.hasRolledOver(at: now) { week = w.usedPercentage.rounded() }
 
         var backIn: TimeInterval?
         if let session = s.fiveHour, !session.hasRolledOver(at: now),
@@ -56,13 +56,17 @@ public enum MenuModel {
             backIn = max(0, session.resetsAt.timeIntervalSince(now))
         }
 
-        return BarContent(weekRemaining: week, backIn: backIn)
+        return BarContent(weekUsed: week, backIn: backIn)
     }
 
-    /// The bar's text. A missing week still renders its slot as a dash, so the
-    /// countdown never slides into the position the percentage normally holds.
+    /// A missing week still renders its slot as a dash, so the countdown never
+    /// slides into the position the percentage normally holds.
+    ///
+    /// The countdown stays a *duration* here even though the dropdown gives a
+    /// concrete time: a bare "17:50" in the menu bar sits inches from the
+    /// system clock and reads as a duplicate of it.
     public static func barText(_ content: BarContent) -> String {
-        let week = content.weekRemaining.map { "\(Int($0))%" }
+        let week = content.weekUsed.map { "\(Int($0))%" }
         guard let backIn = content.backIn else { return week ?? "—" }
         return "\(week ?? "—") · \(Format.duration(backIn))"
     }
@@ -76,18 +80,19 @@ public enum MenuModel {
 
     // MARK: Headline
 
-    /// The conclusion, in words. The rows below carry the arithmetic.
-    public static func headline(_ s: Snapshot?, now: Date) -> String {
+    /// The conclusion, in words — and always naming which window it is about,
+    /// because a bare "Comfortable" leaves you asking comfortable about what.
+    public static func headline(_ s: Snapshot?, now: Date, formatting: Formatting) -> String {
         guard let s else { return "Not set up" }
         if let session = s.fiveHour, !session.hasRolledOver(at: now),
            session.usedPercentage >= sessionSpentAt {
-            return "Back at \(Format.clock(session.resetsAt))"
+            return "Session resumes \(formatting.when(session.resetsAt, now: now))"
         }
         guard let week = s.sevenDay else { return "No usage data" }
-        if week.hasRolledOver(at: now) { return waitingText.prefix(1).uppercased() + waitingText.dropFirst() }
+        if week.hasRolledOver(at: now) { return "Waiting for a fresh reading" }
         let pace = Metrics.weeklyPace(week, now: now)
-        if let capsOut = pace.capsOutAt { return "Runs out \(Format.dayAndTime(capsOut))" }
-        return "Comfortable"
+        if let capsOut = pace.capsOutAt { return "Week runs out \(formatting.when(capsOut, now: now))" }
+        return "Week on pace"
     }
 
     // MARK: Freshness
@@ -99,40 +104,35 @@ public enum MenuModel {
 
     // MARK: Rows
 
-    public static func rows(_ s: Snapshot?, now: Date, staleAfter: TimeInterval) -> [MenuRow] {
+    public static func rows(_ s: Snapshot?, now: Date, staleAfter: TimeInterval,
+                            formatting: Formatting = Formatting()) -> [MenuRow] {
         guard let s else {
             return [.headline("Not set up"), .separator,
                     .note("Install the status line tap to start")]
         }
 
-        var rows: [MenuRow] = [.headline(headline(s, now: now)), .separator]
+        var rows: [MenuRow] = [.headline(headline(s, now: now, formatting: formatting)), .separator]
 
-        if s.fiveHour == nil && s.sevenDay == nil {
+        if s.fiveHour == nil && s.sevenDay == nil && s.extra.isEmpty {
             rows.append(.note("Needs a Claude Pro or Max subscription"))
             rows.append(.separator)
             rows.append(freshness(s, now: now, staleAfter: staleAfter))
             return rows
         }
 
+        // Every window gets the same two-line shape: what it has cost, then
+        // when it comes back.
         if let week = s.sevenDay {
-            if week.hasRolledOver(at: now) {
-                rows.append(.stat("Week", waitingText))
-            } else {
-                let pace = Metrics.weeklyPace(week, now: now)
-                rows.append(.stat("Week", "\(remaining(week))% left · \(Format.pace(pace))"))
-                rows.append(.stat("", "resets \(Format.dayAndTime(week.resetsAt))"))
-            }
+            let pace = Metrics.weeklyPace(week, now: now)
+            rows += window("Week", week, now: now, formatting: formatting,
+                           suffix: " · \(Format.pace(pace))")
         }
-
         if let session = s.fiveHour {
-            if session.hasRolledOver(at: now) {
-                rows.append(.stat("Session", waitingText))
-            } else {
-                let left = session.resetsAt.timeIntervalSince(now)
-                rows.append(.stat("Session", session.usedPercentage >= sessionSpentAt
-                    ? "spent · back in \(Format.duration(left))"
-                    : "\(remaining(session))% left · resets in \(Format.duration(left))"))
-            }
+            rows += window("Session", session, now: now, formatting: formatting,
+                           spentAt: sessionSpentAt)
+        }
+        for bucket in s.extra {
+            rows += window(bucket.label, bucket.window, now: now, formatting: formatting)
         }
 
         rows.append(.separator)
@@ -140,8 +140,16 @@ public enum MenuModel {
         return rows
     }
 
-    private static func remaining(_ w: UsageWindow) -> Int {
-        Int(max(0, 100 - w.usedPercentage).rounded())
+    private static func window(_ label: String, _ w: UsageWindow, now: Date,
+                               formatting: Formatting,
+                               suffix: String = "", spentAt: Double? = nil) -> [MenuRow] {
+        if w.hasRolledOver(at: now) { return [.stat(label, waitingText)] }
+        if let spentAt, w.usedPercentage >= spentAt {
+            return [.stat(label, "spent"),
+                    .stat("", "resumes \(formatting.when(w.resetsAt, now: now))")]
+        }
+        return [.stat(label, "\(Int(w.usedPercentage.rounded()))% used\(suffix)"),
+                .stat("", "resets \(formatting.when(w.resetsAt, now: now))")]
     }
 
     private static func freshness(_ s: Snapshot, now: Date, staleAfter: TimeInterval) -> MenuRow {
