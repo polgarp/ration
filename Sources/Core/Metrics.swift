@@ -7,6 +7,14 @@ public struct UsageWindow {
         self.usedPercentage = usedPercentage
         self.resetsAt = resetsAt
     }
+
+    /// True once the window's reset time has passed.
+    ///
+    /// Claude Code refreshes `rate_limits` only after a new API response, so a
+    /// payload can outlive its own window: the percentages then describe a
+    /// window that no longer exists, and every number derived from them —
+    /// remaining, pace, projection — is about the past.
+    public func hasRolledOver(at now: Date) -> Bool { resetsAt <= now }
 }
 
 public struct WeeklyPace {

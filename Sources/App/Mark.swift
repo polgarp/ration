@@ -15,7 +15,7 @@ enum Mark {
     enum Style: String {
         case ring, disc, jar, bars
         static func fromEnvironment() -> Style {
-            Style(rawValue: ProcessInfo.processInfo.environment["RATION_MARK"] ?? "") ?? .ring
+            Style(rawValue: ProcessInfo.processInfo.environment["RATION_MARK"] ?? "") ?? .disc
         }
     }
 
@@ -72,29 +72,34 @@ enum Mark {
 
     private static func drawDisc(_ r: NSRect, _ used: Double, _ over: Bool) {
         let c = NSPoint(x: r.midX, y: r.midY)
-        let radius = r.width * 0.31
+        let radius = r.width * 0.33
         NSColor.black.setStroke()
-        if over {
-            let halo = NSBezierPath(ovalIn: NSRect(x: c.x - radius - r.width * 0.12,
-                                                   y: c.y - radius - r.width * 0.12,
-                                                   width: (radius + r.width * 0.12) * 2,
-                                                   height: (radius + r.width * 0.12) * 2))
-            halo.lineWidth = r.width * 0.06
-            halo.stroke()
-        }
+
         let outline = NSBezierPath(ovalIn: NSRect(x: c.x - radius, y: c.y - radius,
                                                   width: radius * 2, height: radius * 2))
         outline.lineWidth = r.width * 0.055
         outline.stroke()
-        if used > 0.5 {
-            NSColor.black.setFill()
-            let wedge = NSBezierPath()
-            wedge.move(to: c)
-            wedge.appendArc(withCenter: c, radius: radius,
-                            startAngle: 90, endAngle: 90 - (min(used, 99.9) / 100 * 360), clockwise: true)
-            wedge.close()
-            wedge.fill()
+
+        guard used > 0.5 else { return }
+
+        NSColor.black.setFill()
+        let wedge = NSBezierPath()
+        wedge.move(to: c)
+        wedge.appendArc(withCenter: c, radius: radius,
+                        startAngle: 90, endAngle: 90 - (min(used, 99.9) / 100 * 360), clockwise: true)
+        wedge.close()
+
+        if over {
+            // Over-pace is counter-punched OUT of the wedge rather than added
+            // around it. A halo outside the disc grew the bounding box, so the
+            // status item jumped sideways the moment pace flipped — motion in
+            // the menu bar reads as a glitch. Even-odd winding puts the signal
+            // inside the footprint the mark already occupies.
+            let hole = r.width * 0.15
+            wedge.appendOval(in: NSRect(x: c.x - hole, y: c.y - hole, width: hole * 2, height: hole * 2))
+            wedge.windingRule = .evenOdd
         }
+        wedge.fill()
     }
 
     private static func drawJar(_ r: NSRect, _ used: Double, _ over: Bool) {

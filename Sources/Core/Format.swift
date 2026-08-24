@@ -13,6 +13,8 @@ public enum Format {
         let minutes = (total % 3600) / 60
         if days > 0 { return "\(days)d \(hours)h" }
         if hours > 0 { return "\(hours)h \(minutes)m" }
+        // Under a minute the app is counting you back in, where "0m" says nothing.
+        if minutes == 0 { return "\(total)s" }
         return "\(minutes)m"
     }
 
@@ -34,6 +36,15 @@ public enum Format {
         if abs(delta) < 1 { return "on pace" }
         if delta > 0 { return "+\(Int(delta.rounded())) ahead of pace" }
         return "\(Int((-delta).rounded())) under pace"
+    }
+
+    /// A bare time of day, for "back at 14:20".
+    public static func clock(_ date: Date, timeZone: TimeZone = .current) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = timeZone
+        f.dateFormat = "HH:mm"
+        return f.string(from: date)
     }
 
     /// A weekday and time, for reset and cap-out moments.

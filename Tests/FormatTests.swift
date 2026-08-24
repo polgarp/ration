@@ -2,6 +2,8 @@ import Foundation
 
 func runFormatTests(_ t: Harness) {
     t.describe("Format.duration — time until a reset")
+    // Under a minute the app is counting you back in, and "0m" is useless there.
+    t.expect("seconds when the reset is imminent", Format.duration(45), "45s")
     t.expect("minutes only, under an hour", Format.duration(11 * 60), "11m")
     t.expect("hours and minutes", Format.duration(4 * 3600 + 21 * 60), "4h 21m")
     t.expect("drops minutes past a day, where they stop mattering",

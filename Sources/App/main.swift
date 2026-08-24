@@ -10,13 +10,18 @@ let snapshotURL = URL(fileURLWithPath: snapshotPath)
 // inspected and diffed without opening a menu by hand.
 if CommandLine.arguments.contains("--dump") {
     let snapshot = Snapshot.load(from: snapshotURL)
-    print("bar: \(MenuModel.barTitle(snapshot))")
-    for row in MenuModel.rows(snapshot, now: Date(), staleAfter: 90) {
+    let now = Date()
+    switch MenuModel.bar(snapshot, now: now) {
+    case .none:                  print("bar: —")
+    case .weekRemaining(let p):  print("bar: \(Int(p))%")
+    case .backIn(let s):         print("bar: \(Format.duration(s))")
+    }
+    for row in MenuModel.rows(snapshot, now: now, staleAfter: 90) {
         switch row {
-        case .heading(let s):  print("  \(s.uppercased())")
-        case .detail(let s):   print("     \(s)")
-        case .note(let s):     print("  \(s)")
-        case .separator:       print("  ──────────")
+        case .headline(let s):    print("  \(s)")
+        case .stat(let l, let v): print("  \(l.padding(toLength: max(8, l.count), withPad: " ", startingAt: 0)) \(v)")
+        case .note(let s):        print("  \(s)")
+        case .separator:          print("  ──────────")
         }
     }
     exit(0)
