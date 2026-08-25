@@ -35,7 +35,6 @@ enum Setup {
 
     enum Problem: LocalizedError {
         case unreadableSettings
-        case tapMissingFromBundle
         case cannotWrite(String)
         case cannotBackUp
 
@@ -44,8 +43,6 @@ enum Setup {
             case .unreadableSettings:
                 return "~/.claude/settings.json could not be parsed, so nothing was changed. "
                      + "Fix the file by hand and try again."
-            case .tapMissingFromBundle:
-                return "This copy of Ration is missing its tap script. Re-download the app."
             case .cannotWrite(let what):
                 return "Could not write \(what). Nothing was changed."
             case .cannotBackUp:
@@ -75,10 +72,9 @@ enum Setup {
     private static let addedRefreshKey = "ration.addedRefreshInterval"
 
     static func install() throws {
-        guard let bundled = Bundle.main.url(forResource: "claude-usage-tap", withExtension: "sh"),
-              let script = try? Data(contentsOf: bundled)
-        else { throw Problem.tapMissingFromBundle }
-
+        // Swift's multiline literal drops the newline before its closing
+        // delimiter, so the file would otherwise be one byte short of its source.
+        let script = Data((TapScript.source + "\n").utf8)
         let existing = (try? Data(contentsOf: settingsURL)) ?? Data("{}".utf8)
         // Parse before touching anything, so an unreadable file fails with the
         // user's configuration exactly as it was.

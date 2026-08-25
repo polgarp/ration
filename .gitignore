@@ -3,3 +3,4 @@ build/
 *.app/
 *.dSYM/
 .DS_Store
+Sources/App/TapScript.generated.swift

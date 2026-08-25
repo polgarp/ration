@@ -80,7 +80,20 @@ check "the file is untouched, byte for byte" "$AFTER" "$BEFORE"
 check "no tap was installed" "$([ -e "$CASE/claude-usage-tap.sh" ] || echo none)" "none"
 echo
 
-echo "TEST 7 — the backup inherits the original's permissions"
+echo "TEST 7 — the installed tap matches the one in the repo"
+# The script is compiled into the binary, so it can silently drift from the
+# file the shell tests exercise.
+setup_case tapcopy custom
+$BIN --install > /dev/null
+if cmp -s "$CASE/claude-usage-tap.sh" tap/claude-usage-tap.sh; then
+    ok "byte-identical to tap/claude-usage-tap.sh"
+else
+    no "installed tap differs from tap/claude-usage-tap.sh"
+fi
+check "and is executable" "$([ -x "$CASE/claude-usage-tap.sh" ] && echo yes)" "yes"
+echo
+
+echo "TEST 8 — the backup inherits the original's permissions"
 # settings.json may hold environment variables and permission rules; a user who
 # restricted it has not consented to a world-readable copy.
 setup_case perms custom
@@ -90,7 +103,7 @@ BACKUP=$(ls "$CASE"/*ration-backup* 2>/dev/null | head -1)
 check "backup is 0600 like the original" "$(stat -f '%Lp' "$BACKUP")" "600"
 echo
 
-echo "TEST 8 — a refresh interval the user chose is not slowed down"
+echo "TEST 9 — a refresh interval the user chose is not slowed down"
 setup_case fast fast-refresh
 $BIN --install > /dev/null
 INTERVAL=$(python3 -c "
@@ -98,7 +111,7 @@ import json;print(json.load(open('$CASE/settings.json'))['statusLine']['refreshI
 check "their 2s survives" "$INTERVAL" "2"
 echo
 
-echo "TEST 9 — the wrapped status line still renders identically"
+echo "TEST 10 — the wrapped status line still renders identically"
 setup_case render custom
 printf '#!/bin/bash\nexec /usr/bin/wc -c\n' > "$CASE/inner.sh"; chmod +x "$CASE/inner.sh"
 cp tap/claude-usage-tap.sh "$CASE/claude-usage-tap.sh"; chmod +x "$CASE/claude-usage-tap.sh"

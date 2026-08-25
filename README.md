@@ -25,15 +25,36 @@ runs dry — the time you can start again.
 
 Needs macOS 13+, Claude Code, and a Claude Pro or Max subscription.
 
-1. Download `Ration.app` from [Releases](../../releases), drag to `/Applications`.
-2. Ration isn't notarised yet, so Gatekeeper blocks the first launch. Open it,
-   then go to **System Settings → Privacy & Security**, find Ration under
-   *Security* near the bottom, and click **Open Anyway**. Once only.
-   *(On macOS 13–14 you can Control-click the app and choose Open instead;
-   [Sequoia removed that shortcut](https://mjtsai.com/blog/2024/07/05/sequoia-removes-gatekeeper-contextual-menu-override/).)*
-3. Menu bar item → **Set up Ration…** It shows the exact change it will make to
-   `settings.json` before touching anything.
-4. Optional: menu bar item → **Open at Login**, so it comes back after a reboot.
+```bash
+brew tap polgarp/tap
+brew install ration
+open "$(brew --prefix)/opt/ration/Ration.app"
+```
+
+Then use the menu bar item → **Set up Ration…**, which shows the exact change
+it will make to `settings.json` before touching anything. **Open at Login** in
+the same menu keeps it around after a reboot.
+
+Ration builds on your machine rather than shipping a binary, so nothing is
+downloaded and nothing is quarantined — no Gatekeeper prompt, and no Apple
+Developer account behind it. Building needs only the Command Line Tools that
+Homebrew already requires, and takes a few seconds.
+
+<details>
+<summary>Without Homebrew</summary>
+
+```bash
+git clone https://github.com/polgarp/ration.git
+cd ration && ./build.sh
+cp -R build/Ration.app /Applications/
+open /Applications/Ration.app
+```
+
+A locally built app is ad-hoc signed by the linker and carries no quarantine
+flag, so it launches without a warning. A *downloaded* unsigned build would not:
+macOS 15 removed the Control-click → Open shortcut, and it would have to be
+approved under System Settings → Privacy & Security.
+</details>
 
 ## How it works
 
