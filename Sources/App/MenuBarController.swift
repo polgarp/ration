@@ -16,6 +16,7 @@ final class MenuBarController: NSObject {
     /// say something different.
     private var shownRows: [MenuRow]?
     private var shownSetup: Installer.State?
+    private var shownLogin: Bool?
     private var isMenuOpen = false
     private let formatting = Formatting()
     private let service = ServiceMonitor()
@@ -97,9 +98,12 @@ final class MenuBarController: NSObject {
     private func renderMenu(now: Date) {
         guard !isMenuOpen else { return }
         let setup = Setup.currentState()
+        let login = LoginItem.isEnabled
         let rows = MenuModel.rows(snapshot, now: now, staleAfter: staleAfter, formatting: formatting,
                                   service: service.status, isInstalled: setup == .wrapped)
-        guard rows != shownRows || setup != shownSetup || statusItem.menu == nil else { return }
+        guard rows != shownRows || setup != shownSetup || login != shownLogin
+                || statusItem.menu == nil else { return }
+        shownLogin = login
         shownRows = rows
         shownSetup = setup
 
@@ -121,6 +125,9 @@ final class MenuBarController: NSObject {
         case .unreadable:
             menu.addItem(action("settings.json needs fixing…", #selector(explainUnreadable)))
         }
+        let loginItem = action("Open at Login", #selector(toggleLoginItem))
+        loginItem.state = login ? .on : .off
+        menu.addItem(loginItem)
         menu.addItem(NSMenuItem(title: "Quit Ration",
                                 action: #selector(NSApplication.terminate(_:)),
                                 keyEquivalent: "q"))
@@ -258,6 +265,18 @@ final class MenuBarController: NSObject {
             report("Removed.", "Your status line is back to what it was.")
         } catch {
             report("Nothing was changed.", error.localizedDescription, style: .warning)
+        }
+    }
+
+    @objc private func toggleLoginItem() {
+        do {
+            try LoginItem.setEnabled(!LoginItem.isEnabled)
+            shownRows = nil   // force the tick to redraw
+        } catch {
+            report("Could not change the login item.",
+                   "macOS refused to register Ration. This usually means the app is not in "
+                 + "/Applications, or the copy you are running is unsigned and quarantined.",
+                   style: .warning)
         }
     }
 

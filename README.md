@@ -26,10 +26,14 @@ runs dry — the time you can start again.
 Needs macOS 13+, Claude Code, and a Claude Pro or Max subscription.
 
 1. Download `Ration.app` from [Releases](../../releases), drag to `/Applications`.
-2. **Right-click → Open** the first time. Ration isn't notarised yet, so
-   double-clicking hits Gatekeeper.
+2. Ration isn't notarised yet, so Gatekeeper blocks the first launch. Open it,
+   then go to **System Settings → Privacy & Security**, find Ration under
+   *Security* near the bottom, and click **Open Anyway**. Once only.
+   *(On macOS 13–14 you can Control-click the app and choose Open instead;
+   [Sequoia removed that shortcut](https://mjtsai.com/blog/2024/07/05/sequoia-removes-gatekeeper-contextual-menu-override/).)*
 3. Menu bar item → **Set up Ration…** It shows the exact change it will make to
    `settings.json` before touching anything.
+4. Optional: menu bar item → **Open at Login**, so it comes back after a reboot.
 
 ## How it works
 
