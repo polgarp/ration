@@ -115,7 +115,7 @@ final class MenuBarController: NSObject {
         // reading is never competing with a control.
         switch setup {
         case .wrapped:
-            menu.addItem(action("Remove Ration's status line hook…", #selector(confirmUninstall)))
+            menu.addItem(action("Undo Setup…", #selector(confirmUninstall)))
         case .notConfigured, .unwrapped:
             menu.addItem(action("Set up Ration…", #selector(confirmInstall)))
         case .unreadable:
@@ -244,10 +244,10 @@ final class MenuBarController: NSObject {
 
     @objc private func confirmUninstall() {
         let alert = NSAlert()
-        alert.messageText = "Remove Ration's status line hook?"
-        alert.informativeText = "Your own status line command is restored exactly as it was. "
-            + "The tap script and saved usage data are deleted. Ration keeps running but "
-            + "will have nothing to show."
+        alert.messageText = "Undo Ration's setup?"
+        alert.informativeText = "Ration stops reading Claude Code's status line. Your own "
+            + "status line command is restored exactly as it was, and the saved usage data "
+            + "is deleted. Ration keeps running, with nothing to show, until you set it up again."
         alert.addButton(withTitle: "Remove")
         alert.addButton(withTitle: "Cancel")
         NSApp.activate(ignoringOtherApps: true)

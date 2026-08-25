@@ -3,9 +3,3 @@ build/
 *.app/
 *.dSYM/
 .DS_Store
-
-# Design exploration and internal notes: kept locally, not part of a release.
-# The mark review is published at
-# https://claude.ai/code/artifact/c36ee063-656d-4dbc-a68b-d6f85108b028
-design/
-docs/critique-states.md
