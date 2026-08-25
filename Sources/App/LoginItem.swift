@@ -7,13 +7,26 @@ import ServiceManagement
 /// app, so this is a toggle and defaults to off.
 enum LoginItem {
 
-    static var isEnabled: Bool {
-        SMAppService.mainApp.status == .enabled
+    enum State {
+        case off
+        case on
+        /// Registered, but macOS wants the user to confirm it in System
+        /// Settings — usually because login items for this app were denied
+        /// before. Not a failure, and not something an error alert should claim.
+        case needsApproval
+        case unavailable
     }
 
-    /// Registration fails for a bundle macOS will not vouch for — an unsigned
-    /// build run from the Downloads folder, typically. Reported rather than
-    /// swallowed, so the menu never shows a tick that means nothing.
+    static var state: State {
+        switch SMAppService.mainApp.status {
+        case .enabled:           return .on
+        case .requiresApproval:  return .needsApproval
+        case .notRegistered:     return .off
+        case .notFound:          return .unavailable
+        @unknown default:        return .unavailable
+        }
+    }
+
     static func setEnabled(_ enabled: Bool) throws {
         if enabled {
             try SMAppService.mainApp.register()

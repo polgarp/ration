@@ -16,7 +16,7 @@ final class MenuBarController: NSObject {
     /// say something different.
     private var shownRows: [MenuRow]?
     private var shownSetup: Installer.State?
-    private var shownLogin: Bool?
+    private var shownLogin: LoginItem.State?
     private var isMenuOpen = false
     private let formatting = Formatting()
     private let service = ServiceMonitor()
@@ -98,7 +98,7 @@ final class MenuBarController: NSObject {
     private func renderMenu(now: Date) {
         guard !isMenuOpen else { return }
         let setup = Setup.currentState()
-        let login = LoginItem.isEnabled
+        let login = LoginItem.state
         let rows = MenuModel.rows(snapshot, now: now, staleAfter: staleAfter, formatting: formatting,
                                   service: service.status, isInstalled: setup == .wrapped)
         guard rows != shownRows || setup != shownSetup || login != shownLogin
@@ -126,7 +126,14 @@ final class MenuBarController: NSObject {
             menu.addItem(action("settings.json needs fixing…", #selector(explainUnreadable)))
         }
         let loginItem = action("Open at Login", #selector(toggleLoginItem))
-        loginItem.state = login ? .on : .off
+        // A tick when it is on, a dash when macOS is still waiting for the user
+        // to confirm it in System Settings.
+        switch login {
+        case .on:            loginItem.state = .on
+        case .needsApproval: loginItem.state = .mixed
+        case .off:           loginItem.state = .off
+        case .unavailable:   loginItem.state = .off; loginItem.isEnabled = false
+        }
         menu.addItem(loginItem)
         menu.addItem(NSMenuItem(title: "Quit Ration",
                                 action: #selector(NSApplication.terminate(_:)),
@@ -269,14 +276,23 @@ final class MenuBarController: NSObject {
     }
 
     @objc private func toggleLoginItem() {
+        let wasOn = LoginItem.state == .on
         do {
-            try LoginItem.setEnabled(!LoginItem.isEnabled)
-            shownRows = nil   // force the tick to redraw
-        } catch {
+            try LoginItem.setEnabled(!wasOn)
+        } catch let error as NSError {
+            // Report what macOS actually said. Guessing at a cause produces an
+            // explanation that is confidently wrong.
             report("Could not change the login item.",
-                   "macOS refused to register Ration. This usually means the app is not in "
-                 + "/Applications, or the copy you are running is unsigned and quarantined.",
+                   "\(error.localizedDescription)\n\n(\(error.domain) \(error.code))",
                    style: .warning)
+        }
+        shownLogin = nil   // force the tick to redraw
+        renderMenu(now: Date())
+
+        if LoginItem.state == .needsApproval {
+            report("Almost there.",
+                   "macOS needs you to confirm this in System Settings → General → "
+                 + "Login Items, under \"Open at Login\".")
         }
     }
 
