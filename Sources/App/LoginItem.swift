@@ -14,16 +14,17 @@ enum LoginItem {
         /// Settings — usually because login items for this app were denied
         /// before. Not a failure, and not something an error alert should claim.
         case needsApproval
-        case unavailable
     }
 
+    /// `notFound` is reported for an app launchd has no record of, which is the
+    /// ordinary state before the first registration — and registering from
+    /// there succeeds. It is not a reason to refuse the attempt, so the only
+    /// arbiter of whether this can work is `register()` itself.
     static var state: State {
         switch SMAppService.mainApp.status {
-        case .enabled:           return .on
-        case .requiresApproval:  return .needsApproval
-        case .notRegistered:     return .off
-        case .notFound:          return .unavailable
-        @unknown default:        return .unavailable
+        case .enabled:          return .on
+        case .requiresApproval: return .needsApproval
+        default:                return .off
         }
     }
 

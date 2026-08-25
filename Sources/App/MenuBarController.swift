@@ -132,7 +132,6 @@ final class MenuBarController: NSObject {
         case .on:            loginItem.state = .on
         case .needsApproval: loginItem.state = .mixed
         case .off:           loginItem.state = .off
-        case .unavailable:   loginItem.state = .off; loginItem.isEnabled = false
         }
         menu.addItem(loginItem)
         menu.addItem(NSMenuItem(title: "Quit Ration",
