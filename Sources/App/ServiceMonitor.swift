@@ -19,6 +19,19 @@ final class ServiceMonitor {
     private let interval: TimeInterval = 300
     private var timer: Timer?
 
+    /// Ephemeral, with cookies refused outright: the status page is public, and
+    /// a shared session could attach cookies or cached credentials the README
+    /// promises are not sent.
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.httpCookieStorage = nil
+        config.httpCookieAcceptPolicy = .never
+        config.httpShouldSetCookies = false
+        config.urlCache = nil
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        return URLSession(configuration: config)
+    }()
+
     func start() {
         fetch()
         let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in self?.fetch() }
@@ -31,9 +44,8 @@ final class ServiceMonitor {
         // Identify the client, so the operators can see who is calling.
         request.setValue("Ration/0.1 (+https://github.com/polgarp/ration)",
                          forHTTPHeaderField: "User-Agent")
-        request.cachePolicy = .reloadIgnoringLocalCacheData
 
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, _ in
+        session.dataTask(with: request) { [weak self] data, response, _ in
             guard let self else { return }
             guard let data,
                   let http = response as? HTTPURLResponse, http.statusCode == 200,

@@ -91,22 +91,20 @@ enum Setup {
         try backUpSettings(existing)
 
         do {
-            // Atomic: on a re-install the old tap is being executed by every
-            // live Claude Code session on its refresh interval, and bash
-            // reading a half-written script is exactly the broken status line
-            // this app promises never to cause. A rename swaps it whole.
+            // Atomic: live sessions execute this script on their refresh
+            // interval, and bash reading a half-written file is a broken
+            // status line. A rename swaps it whole.
             try script.write(to: tapURL, options: .atomic)
             try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tapURL.path)
         } catch { throw Problem.cannotWrite("the tap script") }
 
-        // Atomic for the same reason: Claude Code re-reads settings.json while
-        // we are writing it, and a truncated read is an unparseable config.
+        // Atomic for the same reason: Claude Code re-reads settings.json
+        // concurrently, and a truncated read is an unparseable config.
         do { try updated.write(to: settingsURL, options: .atomic) }
         catch { throw Problem.cannotWrite("settings.json") }
 
-        // Recorded only once the change actually landed: a flag left behind by
-        // a failed install would make a later uninstall strip a refreshInterval
-        // it never added.
+        // Recorded only once the write lands, so a failed install cannot leave
+        // a flag that makes uninstall strip an interval it never added.
         UserDefaults.standard.set(addedRefresh, forKey: addedRefreshKey)
         cachedState = nil
     }
@@ -132,12 +130,20 @@ enum Setup {
     /// One backup per day, so repeated attempts cannot bury the version that
     /// worked. Throws rather than shrugging: the alert promises a backup, and
     /// overwriting after a silent copy failure is the outcome to prevent.
+    ///
+    /// The copy inherits the original's permissions. settings.json may hold
+    /// environment variables and permission rules, and a user who restricted it
+    /// to 0600 has not consented to a world-readable duplicate.
     private static func backUpSettings(_ data: Data) throws {
         let stamp = DateFormatter()
         stamp.dateFormat = "yyyyMMdd"
         let url = claudeDirectory.appendingPathComponent("settings.json.ration-backup-\(stamp.string(from: Date()))")
         guard !FileManager.default.fileExists(atPath: url.path) else { return }
-        do { try data.write(to: url, options: .atomic) }
-        catch { throw Problem.cannotBackUp }
+        do {
+            try data.write(to: url, options: .atomic)
+            let mode = (try? FileManager.default.attributesOfItem(atPath: settingsURL.path))?[.posixPermissions]
+            try FileManager.default.setAttributes([.posixPermissions: mode ?? 0o600],
+                                                  ofItemAtPath: url.path)
+        } catch { throw Problem.cannotBackUp }
     }
 }

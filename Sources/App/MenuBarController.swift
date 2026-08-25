@@ -85,10 +85,11 @@ final class MenuBarController: NSObject {
         let now = Date()
         let stale = MenuModel.isStale(snapshot, now: now, staleAfter: staleAfter)
 
-        renderBar(now: now, stale: stale)
+        let content = MenuModel.bar(snapshot, now: now)
+        renderBar(content, stale: stale)
         renderMenu(now: now)
         // Only a live countdown needs second-by-second wake-ups.
-        schedule(every: MenuModel.bar(snapshot, now: now).backIn == nil ? idleTick : countdownTick)
+        schedule(every: content.backIn == nil ? idleTick : countdownTick)
     }
 
     /// Rebuilt only when it would read differently, and never while open:
@@ -104,8 +105,8 @@ final class MenuBarController: NSObject {
 
         let menu = NSMenu()
         menu.delegate = self
-        // Items carry no action, and AppKit greys actionless items unless told
-        // not to — which made the entire dropdown read as disabled.
+        // AppKit greys actionless items unless auto-enabling is off, and most
+        // rows here are text.
         menu.autoenablesItems = false
         for row in rows {
             menu.addItem(view(for: row))
@@ -126,8 +127,9 @@ final class MenuBarController: NSObject {
         statusItem.menu = menu
     }
 
-    private func renderBar(now: Date, stale: Bool) {
+    private func renderBar(_ content: BarContent, stale: Bool) {
         guard let button = statusItem.button else { return }
+        let now = Date()
 
         // The mark is always drawn from the week, so the glyph and the number
         // can never make competing claims about different windows.

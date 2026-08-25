@@ -2,10 +2,10 @@ import Foundation
 
 /// What the menu bar shows: two slots, either of which may be empty.
 ///
-/// The week owns the first slot permanently — Claude Code's status line already
-/// shows session usage, so the week is the number nothing else reports. The
-/// countdown appends rather than replacing: a slot that changes units cannot be
-/// read at a glance.
+/// The week owns the first slot permanently — Claude Code's status line covers
+/// the session, so the week is the number nothing else reports. The countdown
+/// appends rather than replacing: a slot that changes units cannot be read at
+/// a glance.
 public struct BarContent: Equatable {
     /// Percentage **used**, not remaining: the disc fills as you spend, so the
     /// number has to count in the same direction or the two halves of the item
@@ -66,8 +66,7 @@ public enum MenuModel {
         return "\(week ?? "—") · \(Format.duration(backIn))"
     }
 
-    /// What the mark is drawn from — always the week, so the glyph and the
-    /// number can never make competing claims.
+    /// Always the week, so the glyph and the number report one window.
     public static func markUsage(_ s: Snapshot?, now: Date = Date()) -> Double? {
         guard let week = s?.sevenDay, !week.hasRolledOver(at: now) else { return nil }
         return week.usedPercentage

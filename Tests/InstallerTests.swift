@@ -74,9 +74,8 @@ func runInstallerTests(_ t: Harness) {
     t.expect("uninstall throws too", threw, true)
 
     t.describe("Installer — a status line shaped in a way we do not understand")
-    // Rule 1 one level down. Reading `"statusLine": "script.sh"` as "no status
-    // line" would have silently replaced it, which is losing their command by
-    // another route.
+    // Rule 1, one level down: `"statusLine": "script.sh"` read as "no status
+    // line" loses their command just as surely as overwriting it.
     let oddShape = Data(#"{"statusLine": "bash ~/.claude/statusline.sh"}"#.utf8)
     t.expect("a non-object status line is unreadable, not unconfigured",
              Installer.inspect(oddShape, tap: tap), .unreadable)

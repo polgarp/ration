@@ -22,11 +22,8 @@ public struct WeeklyPace {
     public let capsOutAt: Date?
     public var delta: Double { usedPercentage - elapsedPercentage }
 
-    /// One threshold, used by the wording, the headline and the mark alike.
-    /// They previously disagreed: "on pace" allowed a point of slack while the
-    /// cap-out headline fired on any positive delta, so half a point ahead
-    /// produced a dropdown saying "on pace" above a headline naming the day the
-    /// week runs out.
+    /// The single threshold the wording, the headline and the mark all read,
+    /// so none of them can claim "on pace" while another names a cap-out day.
     public var isOverPace: Bool { !isEarly && delta >= Metrics.paceTolerance }
 
     /// Too little of the window has run to say anything about pace. The same

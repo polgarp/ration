@@ -40,9 +40,10 @@ public enum Installer {
         return .unwrapped(command)
     }
 
-    /// Matched on the script name, not the whole prefix: an equivalent hand
-    /// edit (`/bin/bash` for `bash`) read as the user's own command, and would
-    /// then be nested on install and left pointing at a deleted script.
+    /// Matched on the script name, not the whole prefix, so an equivalent
+    /// spelling (`/bin/bash` for `bash`) is still recognised as ours. Reading
+    /// it as theirs would nest the tap and leave uninstall pointing at a
+    /// deleted script.
     static func isOurs(_ command: String, tap: String) -> Bool {
         guard let script = tap.split(separator: " ").last.map(String.init),
               let name = script.split(separator: "/").last

@@ -51,10 +51,9 @@ public struct Snapshot {
         }
     }
 
-    /// `ISO8601DateFormatter` matches exactly one shape at a time: the default
-    /// options reject fractional seconds outright. `model_scoped` is
-    /// undocumented, so its precision is not ours to assume — and a formatter
-    /// that says no drops the whole bucket silently rather than failing loudly.
+    /// `ISO8601DateFormatter` matches one shape at a time and rejects
+    /// fractional seconds by default. `model_scoped` is undocumented, so its
+    /// precision is unknown and a refusal drops the bucket silently.
     private static let isoFormatters: [ISO8601DateFormatter] = {
         let plain = ISO8601DateFormatter()
         let fractional = ISO8601DateFormatter()

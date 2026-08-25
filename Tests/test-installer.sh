@@ -80,7 +80,17 @@ check "the file is untouched, byte for byte" "$AFTER" "$BEFORE"
 check "no tap was installed" "$([ -e "$CASE/claude-usage-tap.sh" ] || echo none)" "none"
 echo
 
-echo "TEST 7 — a refresh interval the user chose is not slowed down"
+echo "TEST 7 — the backup inherits the original's permissions"
+# settings.json may hold environment variables and permission rules; a user who
+# restricted it has not consented to a world-readable copy.
+setup_case perms custom
+chmod 600 "$CASE/settings.json"
+$BIN --install > /dev/null
+BACKUP=$(ls "$CASE"/*ration-backup* 2>/dev/null | head -1)
+check "backup is 0600 like the original" "$(stat -f '%Lp' "$BACKUP")" "600"
+echo
+
+echo "TEST 8 — a refresh interval the user chose is not slowed down"
 setup_case fast fast-refresh
 $BIN --install > /dev/null
 INTERVAL=$(python3 -c "
@@ -88,7 +98,7 @@ import json;print(json.load(open('$CASE/settings.json'))['statusLine']['refreshI
 check "their 2s survives" "$INTERVAL" "2"
 echo
 
-echo "TEST 8 — the wrapped status line still renders identically"
+echo "TEST 9 — the wrapped status line still renders identically"
 setup_case render custom
 printf '#!/bin/bash\nexec /usr/bin/wc -c\n' > "$CASE/inner.sh"; chmod +x "$CASE/inner.sh"
 cp tap/claude-usage-tap.sh "$CASE/claude-usage-tap.sh"; chmod +x "$CASE/claude-usage-tap.sh"

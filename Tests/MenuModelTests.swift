@@ -26,9 +26,8 @@ func runMenuModelTests(_ t: Harness) {
     func bar(_ s: Snapshot?) -> BarContent { MenuModel.bar(s, now: now) }
 
     t.describe("bar — the number counts what the disc fills with")
-    // The disc fills as you spend, so the number must count spend too. Showing
-    // remaining beside a fill-as-you-spend disc had the two halves moving in
-    // opposite directions.
+    // The disc fills as you spend, so the number counts spend too: the two
+    // halves of one item must move in the same direction.
     t.expect("reports usage, matching the mark", bar(snap(session: 8, week: 7)).weekUsed ?? -1, 7.0)
     t.expect("renders as a bare percentage", MenuModel.barText(bar(snap(session: 8, week: 7))), "7%")
     t.expect("glyph reads the same window and the same direction",
@@ -46,7 +45,8 @@ func runMenuModelTests(_ t: Harness) {
     t.expect("rendered as a duration", MenuModel.barText(locked), "7% · 1h 12m")
 
     t.describe("headline — names its subject")
-    // "Comfortable" alone left you asking: comfortable about what?
+    // The headline names its window; "Comfortable" alone says nothing about
+    // which limit it means.
     t.expect("says which window is fine",
              MenuModel.headline(snap(session: 10, week: 41, weekElapsed: 0.5), now: now, formatting: fmt),
              "Week on pace")

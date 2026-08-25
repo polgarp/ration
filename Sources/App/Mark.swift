@@ -98,11 +98,9 @@ enum Mark {
         wedge.close()
 
         if over {
-            // Over-pace is counter-punched OUT of the wedge rather than added
-            // around it. A halo outside the disc grew the bounding box, so the
-            // status item jumped sideways the moment pace flipped — motion in
-            // the menu bar reads as a glitch. Even-odd winding puts the signal
-            // inside the footprint the mark already occupies.
+            // Counter-punched out of the wedge, not added around it: the
+            // bounding box must stay constant, or the item and every icon
+            // beside it shift when pace flips.
             let hole = r.width * 0.15
             wedge.appendOval(in: NSRect(x: c.x - hole, y: c.y - hole, width: hole * 2, height: hole * 2))
             wedge.windingRule = .evenOdd
