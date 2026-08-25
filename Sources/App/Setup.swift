@@ -120,6 +120,7 @@ enum Setup {
         try? FileManager.default.removeItem(at: tapURL)
         try? FileManager.default.removeItem(at: snapshotURL)
         UserDefaults.standard.removeObject(forKey: addedRefreshKey)
+        try? LoginItem.setEnabled(false)
         cachedState = nil
     }
 

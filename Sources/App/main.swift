@@ -60,6 +60,11 @@ if CommandLine.arguments.contains("--status") {
     }
     exit(0)
 }
+if CommandLine.arguments.contains("--login-on") || CommandLine.arguments.contains("--login-off") {
+    let on = CommandLine.arguments.contains("--login-on")
+    do { try LoginItem.setEnabled(on); print(on ? "login item enabled" : "login item disabled"); exit(0) }
+    catch { FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8)); exit(1) }
+}
 if CommandLine.arguments.contains("--install") {
     do { try Setup.install(); print("installed"); exit(0) }
     catch { FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8)); exit(1) }

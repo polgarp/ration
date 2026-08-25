@@ -33,7 +33,8 @@ open "$(brew --prefix)/opt/ration/Ration.app"
 
 Then use the menu bar item → **Set up Ration…**, which shows the exact change
 it will make to `settings.json` before touching anything. **Open at Login** in
-the same menu keeps it around after a reboot.
+the same menu keeps it around after a reboot; it writes a LaunchAgent, which
+you can also switch with `ration --login-on` / `--login-off`.
 
 Ration builds on your machine rather than shipping a binary, so nothing is
 downloaded and nothing is quarantined — no Gatekeeper prompt, and no Apple

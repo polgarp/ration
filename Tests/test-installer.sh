@@ -121,5 +121,31 @@ WRAPPED=$(CLAUDE_USAGE_SNAPSHOT="$CASE/snap.json" bash "$CASE/claude-usage-tap.s
 check "byte-identical output" "$WRAPPED" "$BARE"
 echo
 
+echo "TEST 11 — the login item is a path-keyed LaunchAgent"
+# Ad-hoc signed apps are identified by binary hash, so an SMAppService
+# registration stops matching the app on every rebuild. A plist is keyed on the
+# path, which Homebrew's opt symlink keeps stable across upgrades.
+setup_case login custom
+export RATION_LAUNCH_AGENTS_DIR="$CASE/LaunchAgents"
+$BIN --install > /dev/null
+PLIST="$RATION_LAUNCH_AGENTS_DIR/com.polgarp.ration.plist"
+check "not enabled by default" "$([ -e "$PLIST" ] || echo absent)" "absent"
+
+$BIN --login-on > /dev/null
+check "written on request" "$([ -f "$PLIST" ] && echo yes)" "yes"
+check "is a valid plist" "$(plutil -lint "$PLIST" >/dev/null 2>&1 && echo ok)" "ok"
+check "label matches" "$(/usr/libexec/PlistBuddy -c 'Print :Label' "$PLIST")" "com.polgarp.ration"
+check "runs at load" "$(/usr/libexec/PlistBuddy -c 'Print :RunAtLoad' "$PLIST")" "true"
+# Keyed on the path, which is the whole point: a rebuild changes the binary's
+# hash but not where it lives.
+TARGET=$(/usr/libexec/PlistBuddy -c 'Print :ProgramArguments:0' "$PLIST")
+check "points at an executable that exists" "$([ -x "$TARGET" ] && echo yes)" "yes"
+
+# Undo Setup must take it with it, so nothing of ours survives a removal.
+$BIN --uninstall > /dev/null
+check "removed by uninstall" "$([ -e "$PLIST" ] || echo gone)" "gone"
+unset RATION_LAUNCH_AGENTS_DIR
+echo
+
 printf '%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
