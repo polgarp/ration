@@ -117,9 +117,11 @@ public enum MenuModel {
 
         if let week = s.sevenDay, !week.hasRolledOver(at: now) {
             let pace = Metrics.weeklyPace(week, now: now)
-            // "plus 2 ahead of pace" is redundant aloud; "ahead" already
-            // carries the sign the glyph carries visually.
-            let spokenPace = Format.pace(pace).replacingOccurrences(of: "+", with: "")
+            // Aloud, "plus" is redundant beside "ahead", and "%" is read as a
+            // symbol rather than a word.
+            let spokenPace = Format.pace(pace)
+                .replacingOccurrences(of: "+", with: "")
+                .replacingOccurrences(of: "%", with: " percent")
             parts.append("Week \(Int(week.usedPercentage.rounded())) percent used, \(spokenPace).")
         }
         if let session = s.fiveHour, !session.hasRolledOver(at: now) {

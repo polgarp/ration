@@ -36,8 +36,10 @@ public enum Format {
         // The same tolerance the headline and the mark read, so the wording and
         // the conclusion can never disagree about where "on pace" ends.
         if abs(delta) < Metrics.paceTolerance { return "on pace" }
-        if delta > 0 { return "+\(Int(delta.rounded())) ahead of pace" }
-        return "\(Int((-delta).rounded())) under pace"
+        // Carries its unit: a bare "+4" beside "12% used" left it unclear what
+        // the second number counted.
+        if delta > 0 { return "+\(Int(delta.rounded()))% ahead of pace" }
+        return "\(Int((-delta).rounded()))% under pace"
     }
 
 }

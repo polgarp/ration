@@ -10,6 +10,9 @@ final class ServiceMonitor {
     private(set) var status: ServiceStatus?
     var onUpdate: (() -> Void)?
 
+    /// The page a reader is sent to; the endpoint below is its JSON summary.
+    static let statusPage = URL(string: "https://status.claude.com/")!
+
     private let url = URL(string: "https://status.claude.com/api/v2/summary.json")!
     /// Incidents are measured in minutes at best, and a public status page
     /// deserves polite traffic.

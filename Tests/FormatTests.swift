@@ -22,9 +22,9 @@ func runFormatTests(_ t: Harness) {
                            now: weekEnd.addingTimeInterval(-Metrics.weekLength * (1 - fraction)))
     }
     t.expect("ahead of pace is signed, because the sign is the point",
-             Format.pace(paceAt(used: 84, fraction: 0.69)), "+15 ahead of pace")
+             Format.pace(paceAt(used: 84, fraction: 0.69)), "+15% ahead of pace")
     t.expect("under pace drops the sign and says under",
-             Format.pace(paceAt(used: 20, fraction: 0.50)), "30 under pace")
+             Format.pace(paceAt(used: 20, fraction: 0.50)), "30% under pace")
     t.expect("within a point either way is simply on pace",
              Format.pace(paceAt(used: 50, fraction: 0.50)), "on pace")
 

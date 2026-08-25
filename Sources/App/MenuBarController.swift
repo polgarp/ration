@@ -182,7 +182,10 @@ final class MenuBarController: NSObject {
                 .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
                 .foregroundColor: NSColor.secondaryLabelColor
             ]))
-            return item(dot, spoken: MenuModel.spokenRow(row))
+            let statusItem = item(dot, spoken: MenuModel.spokenRow(row) + ", opens the status page")
+            statusItem.action = #selector(openStatusPage)
+            statusItem.target = self
+            return statusItem
 
         case .note(let text):
             return item(NSAttributedString(string: text, attributes: [
@@ -254,6 +257,10 @@ final class MenuBarController: NSObject {
         } catch {
             report("Nothing was changed.", error.localizedDescription, style: .warning)
         }
+    }
+
+    @objc private func openStatusPage() {
+        NSWorkspace.shared.open(ServiceMonitor.statusPage)
     }
 
     @objc private func explainUnreadable() {

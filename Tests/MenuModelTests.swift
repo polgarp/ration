@@ -62,7 +62,7 @@ func runMenuModelTests(_ t: Harness) {
     t.describe("rows — week and session share one structure")
     let normal = rows(snap(session: 29, sessionResetsIn: 5 * 3600, week: 7, weekElapsed: 0.5))
     t.expect("opens with the conclusion", normal.first, .headline("Week on pace"))
-    t.expect("week states usage and pace", normal.contains(.stat("Week", "7% used · 43 under pace")), true)
+    t.expect("week states usage and pace", normal.contains(.stat("Week", "7% used · 43% under pace")), true)
     t.expect("week reset is a concrete time",
              normal.contains(.stat("", "resets \(fmt.when(now.addingTimeInterval(Metrics.weekLength * 0.5), now: now))")), true)
     t.expect("session states usage the same way", normal.contains(.stat("Session", "29% used")), true)
@@ -144,18 +144,18 @@ func runMenuModelTests(_ t: Harness) {
     // number counts or that the disc beside it means anything.
     t.expect("names the app, the window and the direction",
              MenuModel.spoken(snap(session: 29, week: 12, weekElapsed: 0.1), now: now, formatting: fmt),
-             "Ration. Week 12 percent used, 2 ahead of pace. Session 29 percent used.")
+             "Ration. Week 12 percent used, 2 percent ahead of pace. Session 29 percent used.")
     t.expect("a spent session says when you are back",
              MenuModel.spoken(snap(session: 100, sessionResetsIn: 4320, week: 12, weekElapsed: 0.1),
                               now: now, formatting: fmt),
-             "Ration. Week 12 percent used, 2 ahead of pace. "
+             "Ration. Week 12 percent used, 2 percent ahead of pace. "
              + "Session spent, back \(fmt.when(now.addingTimeInterval(4320), now: now)).")
     t.expect("no data says so rather than reading a dash",
              MenuModel.spoken(nil, now: now, formatting: fmt), "Ration. Not set up.")
     t.expect("a service problem is announced first",
              MenuModel.spoken(snap(session: 29, week: 12), now: now, formatting: fmt,
                               service: ServiceStatus(claudeCode: .outage)),
-             "Ration. Claude Code is down. Week 12 percent used, 38 under pace. Session 29 percent used.")
+             "Ration. Claude Code is down. Week 12 percent used, 38 percent under pace. Session 29 percent used.")
 
     t.describe("accessibility — each row reads without its tab")
     // Rows are laid out with a tab stop, which VoiceOver reads as a gap.
