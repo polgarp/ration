@@ -28,6 +28,14 @@ public struct ServiceStatus: Equatable {
     public let claudeCode: Level
     public let checkedAt: Date
 
+    /// Beyond this the reading is too old to act on. The monitor polls every
+    /// 5 minutes, so this tolerates a few misses before going quiet.
+    public static let maximumAge: TimeInterval = 20 * 60
+
+    public func isCurrent(at now: Date) -> Bool {
+        now.timeIntervalSince(checkedAt) <= ServiceStatus.maximumAge
+    }
+
     public var isNoteworthy: Bool {
         switch claudeCode {
         case .operational, .unknown: return false

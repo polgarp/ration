@@ -83,7 +83,9 @@ enum Setup {
         // Parse before touching anything, so an unreadable file fails with the
         // user's configuration exactly as it was.
         let addedRefresh = Installer.addsRefreshInterval(to: existing)
-        let updated = try Installer.install(into: existing, tap: resolvedTapCommand)
+        let updated: Data
+        do { updated = try Installer.install(into: existing, tap: resolvedTapCommand) }
+        catch { throw Problem.unreadableSettings }
 
         try? FileManager.default.createDirectory(at: claudeDirectory, withIntermediateDirectories: true)
         try backUpSettings(existing)
@@ -111,9 +113,12 @@ enum Setup {
 
     static func uninstall() throws {
         let existing = (try? Data(contentsOf: settingsURL)) ?? Data("{}".utf8)
-        let updated = try Installer.uninstall(
-            from: existing, tap: resolvedTapCommand,
-            removeRefreshInterval: UserDefaults.standard.bool(forKey: addedRefreshKey))
+        let updated: Data
+        do {
+            updated = try Installer.uninstall(
+                from: existing, tap: resolvedTapCommand,
+                removeRefreshInterval: UserDefaults.standard.bool(forKey: addedRefreshKey))
+        } catch { throw Problem.unreadableSettings }
         try backUpSettings(existing)
         do { try updated.write(to: settingsURL, options: .atomic) }
         catch { throw Problem.cannotWrite("settings.json") }

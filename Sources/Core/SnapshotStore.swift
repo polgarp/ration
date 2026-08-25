@@ -31,11 +31,19 @@ public struct SnapshotStore {
             buckets[b.label] = merged.window
             adoptedBucket = adoptedBucket || merged.accepted
         }
+
+        let learned = fiveHour.accepted || sevenDay.accepted || adoptedBucket
+
+        // A current payload's bucket list is authoritative, so a withdrawn or
+        // renamed bucket disappears instead of reading "waiting for a fresh
+        // reading" forever. A stale payload's list is not.
+        if learned {
+            let present = Set(incoming.extra.map(\.label))
+            buckets = buckets.filter { present.contains($0.key) }
+        }
         let extra = buckets
             .map { NamedWindow(label: $0.key, window: $0.value) }
             .sorted { $0.label < $1.label }
-
-        let learned = fiveHour.accepted || sevenDay.accepted || adoptedBucket
         best = Snapshot(fiveHour: fiveHour.window,
                         sevenDay: sevenDay.window,
                         extra: extra,

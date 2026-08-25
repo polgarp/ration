@@ -38,9 +38,12 @@ public struct Formatting {
         if calendar.isDate(date, inSameDayAs: now) { return "today \(clock)" }
         if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now),
            calendar.isDate(date, inSameDayAs: tomorrow) { return "tomorrow \(clock)" }
-        // Inside a week the weekday alone locates it; beyond that it does not.
+        // A weekday alone locates a date only while it is unambiguous. A weekly
+        // window is exactly 7 days, so the next reset is ~6d23h out for the day
+        // after every reset — close enough to round to 6 whole days, and its
+        // weekday is today's.
         let days = calendar.dateComponents([.day], from: now, to: date).day ?? 0
-        let prefix = days < 7 ? weekday.string(from: date) : weekdayAndDate.string(from: date)
+        let prefix = days < 6 ? weekday.string(from: date) : weekdayAndDate.string(from: date)
         return "\(prefix) \(clock)"
     }
 

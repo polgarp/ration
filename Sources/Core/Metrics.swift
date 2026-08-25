@@ -27,7 +27,12 @@ public struct WeeklyPace {
     /// cap-out headline fired on any positive delta, so half a point ahead
     /// produced a dropdown saying "on pace" above a headline naming the day the
     /// week runs out.
-    public var isOverPace: Bool { delta >= Metrics.paceTolerance }
+    public var isOverPace: Bool { !isEarly && delta >= Metrics.paceTolerance }
+
+    /// Too little of the window has run to say anything about pace. The same
+    /// threshold that suppresses the projection, so the row and the headline
+    /// cannot disagree.
+    public var isEarly: Bool { elapsedPercentage < Metrics.minimumElapsedForProjection }
 }
 
 public enum Metrics {

@@ -166,4 +166,43 @@ func runMenuModelTests(_ t: Harness) {
     t.expect("status rows say the level, so colour is never the only signal",
              MenuModel.spokenRow(.status("Claude Code operational", .operational)),
              "Claude Code operational")
+
+    t.describe("pace — no claim before the window has run")
+    // The projection is suppressed below 1% elapsed, but the pace clause was
+    // not: 3% burned in the first hour read "+3 ahead of pace" beneath a
+    // headline of "Week on pace".
+    let justStarted = rows(snap(session: 5, week: 3, weekElapsed: 0.005))
+    t.expect("the row states usage only",
+             justStarted.contains(.stat("Week", "3% used")), true)
+    t.expect("and the headline makes no claim either",
+             MenuModel.headline(snap(session: 5, week: 3, weekElapsed: 0.005),
+                                now: now, formatting: fmt), "Week just started")
+
+    t.describe("headline — model buckets are usage data")
+    // "No usage data" appeared above rows listing real per-model percentages.
+    let onlyBuckets = Snapshot(fiveHour: nil, sevenDay: nil,
+                               extra: [NamedWindow(label: "Fable",
+                                                   window: UsageWindow(usedPercentage: 12,
+                                                                       resetsAt: now.addingTimeInterval(90_000)))],
+                               capturedAt: now)
+    t.expect("does not claim there is none",
+             MenuModel.headline(onlyBuckets, now: now, formatting: fmt) != "No usage data", true)
+
+    t.describe("service health — a reading that stopped refreshing goes quiet")
+    // An outage seen just before going offline pinned the headline and, because
+    // it short-circuits, suppressed the usage conclusion for as long as the
+    // machine stayed offline.
+    let staleOutage = ServiceStatus(claudeCode: .outage,
+                                    checkedAt: now.addingTimeInterval(-ServiceStatus.maximumAge - 60))
+    t.expect("it no longer takes the headline",
+             MenuModel.headline(snap(session: 29, week: 12), now: now, formatting: fmt,
+                                service: staleOutage),
+             MenuModel.headline(snap(session: 29, week: 12), now: now, formatting: fmt))
+    t.expect("and no status row is shown",
+             rows(snap(session: 29, week: 12), service: staleOutage)
+                .contains(where: { if case .status = $0 { return true }; return false }), false)
+    t.expect("a fresh reading still speaks",
+             MenuModel.headline(snap(session: 29, week: 12), now: now, formatting: fmt,
+                                service: ServiceStatus(claudeCode: .outage, checkedAt: now)),
+             "Claude Code is down")
 }

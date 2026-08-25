@@ -67,10 +67,16 @@ final class MenuBarController: NSObject {
         let modified = FileFreshness.modificationDate(of: snapshotURL)
         guard modified != lastModified else { return }
         lastModified = modified
-        // Every Claude Code session writes this same file, and an idle one
-        // rebroadcasts expired windows. The store keeps whichever reading is
-        // actually newest rather than whichever landed last.
-        if let incoming = Snapshot.load(from: snapshotURL) { store.accept(incoming) }
+        guard let incoming = Snapshot.load(from: snapshotURL) else {
+            // The file is gone — uninstalled, or deleted by hand. Holding the
+            // last reading would leave a percentage on screen that nothing is
+            // updating any more.
+            store = SnapshotStore()
+            return
+        }
+        // Every session writes this file, and an idle one rebroadcasts expired
+        // windows. The store keeps the newest reading, not the last-written.
+        store.accept(incoming)
     }
 
     // MARK: - Rendering
@@ -89,9 +95,9 @@ final class MenuBarController: NSObject {
     /// assigning `statusItem.menu` dismisses a menu AppKit is tracking.
     private func renderMenu(now: Date) {
         guard !isMenuOpen else { return }
-        let rows = MenuModel.rows(snapshot, now: now, staleAfter: staleAfter, formatting: formatting,
-                                  service: service.status)
         let setup = Setup.currentState()
+        let rows = MenuModel.rows(snapshot, now: now, staleAfter: staleAfter, formatting: formatting,
+                                  service: service.status, isInstalled: setup == .wrapped)
         guard rows != shownRows || setup != shownSetup || statusItem.menu == nil else { return }
         shownRows = rows
         shownSetup = setup

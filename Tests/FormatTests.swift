@@ -38,4 +38,9 @@ func runFormatTests(_ t: Harness) {
     t.expect("tomorrow says tomorrow", when(20 * 3600), "tomorrow 08:00")
     t.expect("within the week names the day", when(3 * 86400), "Tue 12:00")
     t.expect("further out names the date", when(9 * 86400), "Mon 31 Aug 12:00")
+    // A weekly window is exactly 7 days, so for the first day after every reset
+    // the next one is ~6d23h away. A bare weekday then matches today's, and
+    // "resets Sat 12:00" on a Saturday reads as an hour ago.
+    t.expect("almost a week out is dated, not just named",
+             when(7 * 86400 - 60), "Sat 29 Aug 11:59")
 }

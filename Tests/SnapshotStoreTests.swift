@@ -88,4 +88,25 @@ func runSnapshotStoreTests(_ t: Harness) {
     appearing.accept(Snapshot(fiveHour: w(25, resetsIn: 3600), sevenDay: nil,
                               extra: [fresh1], capturedAt: now.addingTimeInterval(10)))
     t.expect("a newly-appearing bucket is adopted", appearing.best?.extra.count ?? -1, 1)
+
+    t.describe("SnapshotStore — a bucket the server stopped sending goes away")
+    // Merging by label and never removing meant a renamed or withdrawn bucket
+    // survived for the life of the process, and read "waiting for a fresh
+    // reading" forever once its window passed.
+    var dropping = SnapshotStore()
+    dropping.accept(Snapshot(fiveHour: w(20, resetsIn: 3600), sevenDay: nil,
+                             extra: [NamedWindow(label: "Fable", window: w(12, resetsIn: 200_000))],
+                             capturedAt: now))
+    dropping.accept(Snapshot(fiveHour: w(25, resetsIn: 3600), sevenDay: nil,
+                             extra: [], capturedAt: now.addingTimeInterval(10)))
+    t.expect("dropped when a current payload omits it", dropping.best?.extra.count ?? -1, 0)
+
+    t.describe("SnapshotStore — but a stale payload cannot drop one")
+    var keeping = SnapshotStore()
+    keeping.accept(Snapshot(fiveHour: w(20, resetsIn: 3600), sevenDay: nil,
+                            extra: [NamedWindow(label: "Fable", window: w(12, resetsIn: 200_000))],
+                            capturedAt: now))
+    keeping.accept(Snapshot(fiveHour: w(80, resetsIn: -200_000), sevenDay: nil,
+                            extra: [], capturedAt: now.addingTimeInterval(10)))
+    t.expect("an idle session's empty list is ignored", keeping.best?.extra.count ?? -1, 1)
 }

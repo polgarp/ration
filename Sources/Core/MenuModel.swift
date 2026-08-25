@@ -80,15 +80,19 @@ public enum MenuModel {
     public static func headline(_ s: Snapshot?, now: Date, formatting: Formatting,
                                 service: ServiceStatus? = nil) -> String {
         // If Claude itself is down, your quota is beside the point.
-        if let service, service.isNoteworthy { return service.summary }
+        if let service, service.isCurrent(at: now), service.isNoteworthy { return service.summary }
         guard let s else { return "Not set up" }
         if let session = s.fiveHour, !session.hasRolledOver(at: now),
            session.usedPercentage >= sessionSpentAt {
             return "Session resumes \(formatting.when(session.resetsAt, now: now))"
         }
-        guard let week = s.sevenDay else { return "No usage data" }
+        guard let week = s.sevenDay else {
+            // Model buckets are usage data too.
+            return s.extra.isEmpty ? "No usage data" : "Tracking model limits"
+        }
         if week.hasRolledOver(at: now) { return "Waiting for a fresh reading" }
         let pace = Metrics.weeklyPace(week, now: now)
+        if pace.isEarly { return "Week just started" }
         if let capsOut = pace.capsOutAt { return "Week runs out \(formatting.when(capsOut, now: now))" }
         return "Week on pace"
     }
@@ -107,7 +111,7 @@ public enum MenuModel {
     public static func spoken(_ s: Snapshot?, now: Date, formatting: Formatting,
                               service: ServiceStatus? = nil) -> String {
         var parts = ["Ration."]
-        if let service, service.isNoteworthy { parts.append(service.summary + ".") }
+        if let service, service.isCurrent(at: now), service.isNoteworthy { parts.append(service.summary + ".") }
 
         guard let s else { return (parts + ["Not set up."]).joined(separator: " ") }
 
@@ -144,17 +148,23 @@ public enum MenuModel {
 
     public static func rows(_ s: Snapshot?, now: Date, staleAfter: TimeInterval,
                             formatting: Formatting = Formatting(),
-                            service: ServiceStatus? = nil) -> [MenuRow] {
+                            service: ServiceStatus? = nil,
+                            isInstalled: Bool = false) -> [MenuRow] {
         guard let s else {
-            return [.headline("Not set up"), .separator,
-                    .note("Install the status line tap to start")]
+            // Installed but no payload yet is the ordinary first few seconds,
+            // not a prompt to install something already installed.
+            return isInstalled
+                ? [.headline("Waiting for Claude Code"), .separator,
+                   .note("Usage appears at the next status line refresh")]
+                : [.headline("Not set up"), .separator,
+                   .note("Install the status line tap to start")]
         }
 
         var rows: [MenuRow] = [.headline(headline(s, now: now, formatting: formatting, service: service)),
                                .separator]
         // A problem is repeated as a row so it reads as a distinct fact rather
         // than only as a headline that displaced the usage conclusion.
-        if let service, service.isNoteworthy {
+        if let service, service.isCurrent(at: now), service.isNoteworthy {
             rows.append(.status(service.summary, service.claudeCode))
             rows.append(.separator)
         }
@@ -171,7 +181,7 @@ public enum MenuModel {
         if let week = s.sevenDay {
             let pace = Metrics.weeklyPace(week, now: now)
             rows += window("Week", week, now: now, formatting: formatting,
-                           suffix: " · \(Format.pace(pace))")
+                           suffix: pace.isEarly ? "" : " · \(Format.pace(pace))")
         }
         if let session = s.fiveHour {
             rows += window("Session", session, now: now, formatting: formatting,
@@ -185,7 +195,7 @@ public enum MenuModel {
         // When all is well the confirmation stays small and last: enough to see
         // the watch is running, not enough to be told daily that nothing is
         // wrong.
-        if let service, !service.isNoteworthy {
+        if let service, service.isCurrent(at: now), !service.isNoteworthy {
             rows.append(.status(service.summary, service.claudeCode))
         }
         rows.append(freshness(s, now: now, staleAfter: staleAfter))
