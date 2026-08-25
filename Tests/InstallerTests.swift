@@ -33,7 +33,7 @@ func runInstallerTests(_ t: Harness) {
     t.describe("Installer — wrapping preserves the existing command exactly")
     let installed = try? Installer.install(into: settings("custom"), tap: tap)
     t.expect("the original command survives verbatim, behind the tap",
-             command(installed ?? Data()) ?? "", "\(tap) bash ~/.claude/statusline.sh")
+             command(installed ?? Data()) ?? "", "\(tap) 'bash ~/.claude/statusline.sh'")
     t.expect("refreshInterval is set so idle sessions still report",
              refresh(installed ?? Data()) ?? -1, 10)
     t.expect("unrelated settings are untouched",
@@ -43,7 +43,7 @@ func runInstallerTests(_ t: Harness) {
     t.describe("Installer — installing twice does not double-wrap")
     let twice = try? Installer.install(into: installed ?? Data(), tap: tap)
     t.expect("command is unchanged", command(twice ?? Data()) ?? "",
-             "\(tap) bash ~/.claude/statusline.sh")
+             "\(tap) 'bash ~/.claude/statusline.sh'")
 
     t.describe("Installer — a faster refresh the user chose is never slowed down")
     let fast = try? Installer.install(into: settings("fast-refresh"), tap: tap)
@@ -94,4 +94,62 @@ func runInstallerTests(_ t: Harness) {
     let preview = Installer.preview(for: .unwrapped("bash ~/.claude/statusline.sh"), tap: tap)
     t.expect("shows the command before", preview.contains("bash ~/.claude/statusline.sh"), true)
     t.expect("shows the command after", preview.contains("\(tap) bash ~/.claude/statusline.sh"), true)
+
+    t.describe("Installer — the command is a shell string, not an argv")
+    // The docs are explicit that statusLine.command "runs in a shell", so it
+    // may hold operators. Prefixing the tap onto the raw string made the tap
+    // exec the first word and hand the rest to the shell, which silently
+    // restructured the pipeline.
+    func roundTrip(_ original: String) -> String {
+        let json = Data("{\"statusLine\":{\"type\":\"command\",\"command\":\(quoted(original))}}".utf8)
+        guard let installed = try? Installer.install(into: json, tap: tap),
+              let back = try? Installer.uninstall(from: installed, tap: tap)
+        else { return "<threw>" }
+        return command(back) ?? "<none>"
+    }
+    // The original must arrive as ONE shell-quoted argument, so the tap can
+    // hand it back to a shell intact instead of exec'ing its first word.
+    let shellCommand = "cd $PROJECT && mystatus"
+    let shellJSON = Data("{\"statusLine\":{\"command\":\(quoted(shellCommand))}}".utf8)
+    t.expect("wrapped as a single quoted argument",
+             command((try? Installer.install(into: shellJSON, tap: tap)) ?? Data()) ?? "",
+             "\(tap) 'cd $PROJECT && mystatus'")
+
+    for original in ["cd $PROJECT && mystatus",
+                     "jq -r '\"[\\(.model.display_name)]\"'",
+                     "printf '%s' \"$(date)\" | tr a-z A-Z",
+                     "bash ~/.claude/statusline.sh"] {
+        t.expect("survives: \(original)", roundTrip(original), original)
+    }
+
+    t.describe("Installer — inspect reports the original, not the quoting")
+    let shellish = Data("{\"statusLine\":{\"command\":\(quoted("cd $P && s"))}}".utf8)
+    let wrapped = (try? Installer.install(into: shellish, tap: tap)) ?? Data()
+    t.expect("already wrapped", Installer.inspect(wrapped, tap: tap), .wrapped)
+    t.expect("installing twice does not nest",
+             command((try? Installer.install(into: wrapped, tap: tap)) ?? Data()) ?? "",
+             command(wrapped) ?? "!")
+
+    t.describe("Installer — an equivalent spelling is still ours")
+    // Matching the whole prefix meant a hand-edited but equivalent command was
+    // read as the user's own, then nested on install and left pointing at a
+    // script uninstall had deleted.
+    let handEdited = Data("{\"statusLine\":{\"command\":\"/bin/bash ~/.claude/claude-usage-tap.sh 'x'\"}}".utf8)
+    t.expect("recognised by the script it runs", Installer.inspect(handEdited, tap: tap), .wrapped)
+
+    t.describe("Installer — uninstall keeps the rest of the block")
+    // Deleting the whole statusLine took any other keys with it.
+    let rich = Data("{\"statusLine\":{\"type\":\"command\",\"padding\":0,\"refreshInterval\":2}}".utf8)
+    let richInstalled = (try? Installer.install(into: rich, tap: tap)) ?? Data()
+    let richBack = (try? Installer.uninstall(from: richInstalled, tap: tap)) ?? Data()
+    let block = (try? JSONSerialization.jsonObject(with: richBack) as? [String: Any])?["statusLine"] as? [String: Any]
+    t.expect("their padding survives", block?["padding"] as? Int ?? -1, 0)
+    t.expect("their refreshInterval survives", block?["refreshInterval"] as? Int ?? -1, 2)
+}
+
+/// A JSON string literal for embedding in fixtures.
+private func quoted(_ s: String) -> String {
+    let data = try! JSONSerialization.data(withJSONObject: [s], options: [.fragmentsAllowed])
+    let text = String(decoding: data, as: UTF8.self)
+    return String(text.dropFirst().dropLast())
 }

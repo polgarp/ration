@@ -36,8 +36,29 @@ public enum Installer {
               let command = block["command"] as? String,
               !command.isEmpty
         else { return .notConfigured }
-        if command == tap || command.hasPrefix(tap + " ") { return .wrapped }
+        if isOurs(command, tap: tap) { return .wrapped }
         return .unwrapped(command)
+    }
+
+    /// Matched on the script name, not the whole prefix: an equivalent hand
+    /// edit (`/bin/bash` for `bash`) read as the user's own command, and would
+    /// then be nested on install and left pointing at a deleted script.
+    static func isOurs(_ command: String, tap: String) -> Bool {
+        guard let script = tap.split(separator: " ").last.map(String.init),
+              let name = script.split(separator: "/").last
+        else { return false }
+        return command.contains(name)
+    }
+
+    /// Single-quoted for the shell. `statusLine.command` runs in a shell, so an
+    /// unquoted original is re-split at its operators.
+    static func shellQuote(_ s: String) -> String {
+        "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
+    static func shellUnquote(_ s: String) -> String {
+        guard s.hasPrefix("'"), s.hasSuffix("'"), s.count >= 2 else { return s }
+        return String(s.dropFirst().dropLast()).replacingOccurrences(of: "'\\''", with: "'")
     }
 
     // MARK: Changing
@@ -59,8 +80,8 @@ public enum Installer {
 
         // Idempotent: wrapping an already-wrapped command leaves it alone,
         // rather than nesting the tap inside itself.
-        if !(existing == tap || existing.hasPrefix(tap + " ")) {
-            statusLine["command"] = existing.isEmpty ? tap : "\(tap) \(existing)"
+        if !isOurs(existing, tap: tap) {
+            statusLine["command"] = existing.isEmpty ? tap : "\(tap) \(shellQuote(existing))"
         }
         if statusLine["type"] == nil { statusLine["type"] = "command" }
 
@@ -85,11 +106,18 @@ public enum Installer {
 
         if removeRefreshInterval { statusLine["refreshInterval"] = nil }
 
-        if command == tap {
-            // We were the whole status line, so leave nothing behind.
-            root["statusLine"] = nil
-        } else if command.hasPrefix(tap + " ") {
-            statusLine["command"] = String(command.dropFirst(tap.count + 1))
+        guard isOurs(command, tap: tap) else { return try serialise(root) }
+
+        let rest = command.hasPrefix(tap + " ")
+            ? shellUnquote(String(command.dropFirst(tap.count + 1)))
+            : ""
+        if rest.isEmpty {
+            // Remove only what we added. The block may hold settings of theirs.
+            statusLine["command"] = nil
+            statusLine["type"] = nil
+            root["statusLine"] = statusLine.isEmpty ? nil : statusLine
+        } else {
+            statusLine["command"] = rest
             root["statusLine"] = statusLine
         }
         return try serialise(root)

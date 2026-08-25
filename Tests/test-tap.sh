@@ -23,26 +23,26 @@ check() { if [ "$2" = "$3" ]; then ok "$1"; else no "$1"; printf '        expect
 # The status line under test. Real one if it exists, else a stub that proves
 # the payload arrived intact.
 if [ -x "$HOME/.claude/statusline.sh" ] || [ -f "$HOME/.claude/statusline.sh" ]; then
-    INNER=(bash "$HOME/.claude/statusline.sh")
+    INNER="bash $HOME/.claude/statusline.sh"
     echo "inner status line: ~/.claude/statusline.sh"
 else
     printf '#!/bin/bash\nwc -c\n' > "$WORK/stub.sh"
-    INNER=(bash "$WORK/stub.sh")
+    INNER="bash $WORK/stub.sh"
     echo "inner status line: stub (wc -c)"
 fi
 echo
 
 echo "TEST 1 — transparency: wrapped output == bare output"
 for f in Tests/Fixtures/*.json; do
-    bare=$("${INNER[@]}" < "$f" 2>/dev/null; printf 'rc=%s' "$?")
-    wrapped=$(bash "$TAP" "${INNER[@]}" < "$f" 2>/dev/null; printf 'rc=%s' "$?")
+    bare=$(sh -c "$INNER" < "$f" 2>/dev/null; printf 'rc=%s' "$?")
+    wrapped=$(bash "$TAP" "$INNER" < "$f" 2>/dev/null; printf 'rc=%s' "$?")
     check "$(basename "$f")" "$wrapped" "$bare"
 done
 echo
 
 echo "TEST 2 — snapshot is byte-identical to the payload"
 rm -f "$CLAUDE_USAGE_SNAPSHOT"
-bash "$TAP" "${INNER[@]}" < Tests/Fixtures/healthy.json > /dev/null 2>&1
+bash "$TAP" "$INNER" < Tests/Fixtures/healthy.json > /dev/null 2>&1
 if cmp -s "$CLAUDE_USAGE_SNAPSHOT" Tests/Fixtures/healthy.json; then
     ok "snapshot matches fixture byte for byte"
 else
@@ -63,13 +63,13 @@ echo
 echo "TEST 5 — survives an unwritable snapshot path"
 # The wrapped status line must still run even when saving is impossible.
 out=$(CLAUDE_USAGE_SNAPSHOT=/nonexistent-root-dir/nope.json \
-      bash "$TAP" "${INNER[@]}" < Tests/Fixtures/healthy.json 2>/dev/null)
-expected=$("${INNER[@]}" < Tests/Fixtures/healthy.json 2>/dev/null)
+      bash "$TAP" "$INNER" < Tests/Fixtures/healthy.json 2>/dev/null)
+expected=$(sh -c "$INNER" < Tests/Fixtures/healthy.json 2>/dev/null)
 check "status line still renders" "$out" "$expected"
 echo
 
 echo "TEST 6 — exit code of the wrapped command passes through"
-rc=$(bash "$TAP" bash -c 'exit 42' < Tests/Fixtures/healthy.json 2>/dev/null; echo $?)
+rc=$(bash "$TAP" 'exit 42' < Tests/Fixtures/healthy.json 2>/dev/null; echo $?)
 check "exit code" "$rc" "42"
 echo
 
@@ -84,10 +84,17 @@ else
 fi
 echo
 
-echo "TEST 8 — arguments with spaces survive wrapping"
-printf '#!/bin/bash\nprintf "%%s" "$1"\n' > "$WORK/echoarg.sh"
-out=$(bash "$TAP" bash "$WORK/echoarg.sh" "two words" < Tests/Fixtures/healthy.json 2>/dev/null)
-check "argument preserved" "$out" "two words"
+echo "TEST 8 — shell operators survive wrapping"
+# statusLine.command runs in a shell, so the wrapped string may contain
+# pipelines, && and $(). Exec'ing its first word would restructure them.
+for CMD in 'printf hello | tr a-z A-Z' \
+           'true && printf chained' \
+           'printf "%s" "$(printf substituted)"' \
+           "printf 'quoted arg'"; do
+    bare=$(sh -c "$CMD" < Tests/Fixtures/healthy.json 2>/dev/null)
+    wrapped=$(bash "$TAP" "$CMD" < Tests/Fixtures/healthy.json 2>/dev/null)
+    check "$CMD" "$wrapped" "$bare"
+done
 echo
 
 printf '%d passed, %d failed\n' "$pass" "$fail"

@@ -35,7 +35,7 @@ setup_case custom custom
 check "detected as theirs" "$($BIN --status)" "unwrapped: bash ~/.claude/statusline.sh"
 $BIN --install > /dev/null
 check "now wrapped" "$($BIN --status)" "wrapped"
-check "their command preserved verbatim" "$(cmd)" "bash $CASE/claude-usage-tap.sh bash ~/.claude/statusline.sh"
+check "their command preserved, shell-quoted" "$(cmd)" "bash $CASE/claude-usage-tap.sh 'bash ~/.claude/statusline.sh'"
 check "tap script installed" "$([ -x "$CASE/claude-usage-tap.sh" ] && echo yes)" "yes"
 check "settings backed up" "$(ls "$CASE" | grep -c ration-backup)" "1"
 echo
@@ -94,7 +94,7 @@ printf '#!/bin/bash\nexec /usr/bin/wc -c\n' > "$CASE/inner.sh"; chmod +x "$CASE/
 cp tap/claude-usage-tap.sh "$CASE/claude-usage-tap.sh"; chmod +x "$CASE/claude-usage-tap.sh"
 FIX=Tests/Fixtures/healthy.json
 BARE=$(bash "$CASE/inner.sh" < "$FIX")
-WRAPPED=$(CLAUDE_USAGE_SNAPSHOT="$CASE/snap.json" bash "$CASE/claude-usage-tap.sh" bash "$CASE/inner.sh" < "$FIX")
+WRAPPED=$(CLAUDE_USAGE_SNAPSHOT="$CASE/snap.json" bash "$CASE/claude-usage-tap.sh" "bash $CASE/inner.sh" < "$FIX")
 check "byte-identical output" "$WRAPPED" "$BARE"
 echo
 
