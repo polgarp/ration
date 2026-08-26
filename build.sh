@@ -4,7 +4,7 @@ set -e
 cd "$(dirname "$0")"
 
 NAME="Ration"
-VERSION="0.1.0"
+VERSION="0.1.1"
 BUNDLE_ID="com.polgarp.ration"
 MIN_MACOS="13.0"
 OUT="build"
