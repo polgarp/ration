@@ -6,20 +6,22 @@ whether you're burning the week faster than the week is passing.
 ![Ration in the menu bar](docs/menubar.png)
 
 ```
-Week runs out Sat 10:27
-──────────────────────────────
-Week      12% used · +3 ahead of pace
+Week runs out Sat 19:47
+──────────────────────────────────────
+Week      41% used · +7% ahead of pace
           resets Mon 01:00
-Session   81% used
-          resets today 17:50
-──────────────────────────────
-● Claude Code operational
-Updated just now
+Session   49% used
+          resets today 14:20
+Status    ● Claude Code operational
+          Updated just now
+──────────────────────────────────────
+Settings                             ▸
+Quit Ration
 ```
 
 Claude Code's status line already shows your session usage. Ration adds the two
 things it can't: whether you're ahead of the week's pace, and — when a session
-runs dry — the time you can start again.
+runs dry — the time you get it back. Times follow your Mac's clock format.
 
 ## Install
 
@@ -31,14 +33,12 @@ brew install ration
 open "$(brew --prefix)/opt/ration/Ration.app"
 ```
 
-Then use the menu bar item → **Set up Ration…**, which shows the exact change
-it will make to `settings.json` before touching anything. **Open at Login** in
-the same menu keeps it around after a reboot; it writes a LaunchAgent, which
-you can also switch with `ration --login-on` / `--login-off`.
+Then **Settings → Set up Ration…**, which shows the exact change it will make
+to `settings.json` before touching anything.
 
 Ration builds on your machine rather than shipping a binary, so nothing is
 downloaded and nothing is quarantined — no Gatekeeper prompt, and no Apple
-Developer account behind it. Building needs only the Command Line Tools that
+Developer account behind it. Building needs only the Command Line Tools
 Homebrew already requires, and takes a few seconds.
 
 <details>
@@ -57,6 +57,23 @@ macOS 15 removed the Control-click → Open shortcut, and it would have to be
 approved under System Settings → Privacy & Security.
 </details>
 
+## Using it
+
+The menu bar shows how much of your **week** is spent, since Claude Code
+already reports the session. When a session runs out, the time you get it back
+appears beside it: `41% · 1h 12m`.
+
+**Settings** holds **Open at Login** and **Undo Setup…**. Everything also works
+from the terminal:
+
+```bash
+ration --status        # not configured | wrapped | unwrapped: <command>
+ration --install       # same as "Set up Ration…"
+ration --uninstall     # same as "Undo Setup…"
+ration --login-on      # or --login-off
+ration --dump          # print what the menu would say
+```
+
 ## How it works
 
 Ration reads the documented
@@ -69,12 +86,17 @@ Setup wraps whatever status line command you already have:
 // before
 "command": "bash ~/.claude/statusline.sh"
 // after
-"command": "bash ~/.claude/claude-usage-tap.sh bash ~/.claude/statusline.sh"
+"command": "bash ~/.claude/claude-usage-tap.sh 'bash ~/.claude/statusline.sh'"
 ```
 
-The tap saves the payload and passes the same bytes to your original command,
-which keeps rendering byte-identically. It installs to `~/.claude/`, not inside
-the app bundle, so deleting Ration can't break your status line.
+Your command is passed on as a single quoted string and run by a shell, so
+pipelines and `&&` survive; your status line keeps rendering byte-identically.
+The wrapper installs to `~/.claude/`, not inside the app bundle, so deleting
+Ration can't break your status line.
+
+Every Claude Code session writes that same file, and sessions left idle
+rebroadcast windows that have already expired. Ration keeps whichever reading
+is genuinely newest rather than whichever landed last.
 
 ## Privacy
 
@@ -83,24 +105,24 @@ the app bundle, so deleting Ration can't break your status line.
   Code already keeps in the same folder. Created `0600`, never leaves the
   machine.
 - **One network call**: `status.claude.com/api/v2/summary.json` every 5 minutes,
-  for the service health row. Public and unauthenticated — nothing about you in
-  the request.
+  for the service health row. Public and unauthenticated, over an ephemeral
+  session with cookies refused — nothing about you in the request.
 - Nothing else. No analytics, no telemetry, no update pings.
 
 ## Uninstall
 
-Menu bar item → **Remove Ration's status line hook…** Your command is restored
-exactly as it was; the tap and saved usage data are deleted. `settings.json` is
-backed up before either change.
+**Settings → Undo Setup…** restores your own status line command exactly as it
+was, and deletes the saved usage data and the login item. `settings.json` is
+backed up first. Then `brew uninstall ration`.
 
 ## Limitations
 
 - Only sees Claude Code. Usage from the desktop app and claude.ai counts against
   the same budgets but is invisible here.
-- Per-model buckets (Opus, Fable, overage) are rendered from undocumented fields
-  that could change.
+- Per-model buckets (Opus, Fable, overage) come from undocumented fields that
+  could change.
 - `rate_limits` refreshes only after an API response, so a window can outlive
-  its payload. Ration says "waiting for a fresh reading" rather than guessing.
+  its payload. Ration says "Usage window has reset" rather than guessing.
 
 ## Building
 
@@ -108,13 +130,12 @@ Needs only Xcode Command Line Tools.
 
 ```bash
 ./build.sh                  # -> build/Ration.app, universal
-./run-tests.sh              # unit tests
-./Tests/test-tap.sh         # status line transparency
-./Tests/test-installer.sh   # settings.json rewriting
+./run-tests.sh              # unit tests, then the status line tests
+./Tests/test-installer.sh   # settings.json rewriting, against fixtures
 ```
 
-`Ration --dump` prints what the menu would say. There's no `swift test` —
-XCTest needs a full Xcode install, so the harness is 40 lines instead.
+There's no `swift test` — XCTest needs a full Xcode install, so the harness is
+40 lines instead.
 
 ## License
 
