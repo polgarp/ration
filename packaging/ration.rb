@@ -10,7 +10,7 @@ class Ration < Formula
   desc "Menu bar meter for Claude Code usage, with weekly pace"
   homepage "https://github.com/polgarp/ration"
   url "https://github.com/polgarp/ration/archive/refs/tags/v0.1.0.tar.gz"
-  sha256 "c5cc6e1cea0cdded81097cb6f4df265f5781e2d0d9f309746aa1ec11ec34eb83"
+  sha256 "ea758ea91ecda10c07011d11780c9c38abbf9f9311eba14a11fe4a948af94348"
   license "MIT"
   head "https://github.com/polgarp/ration.git", branch: "main"
 
