@@ -4,7 +4,7 @@ func runMenuModelTests(_ t: Harness) {
     let utc = TimeZone(identifier: "UTC")!
     var cal = Calendar(identifier: .gregorian); cal.timeZone = utc
     let now = Date(timeIntervalSince1970: 1_787_400_000)   // Sat 22 Aug 12:00 UTC
-    let fmt = Formatting(timeZone: utc, calendar: cal)
+    let fmt = Formatting(timeZone: utc, calendar: cal, locale: Locale(identifier: "en_GB"))
 
     func snap(session: Double?, sessionResetsIn: TimeInterval = 3600,
               week: Double?, weekElapsed: Double = 0.5,

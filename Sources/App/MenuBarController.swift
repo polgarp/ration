@@ -145,14 +145,15 @@ final class MenuBarController: NSObject {
             settings.addItem(action("settings.json needs fixing…", #selector(explainUnreadable)))
         }
 
-        settings.addItem(.separator())
-        settings.addItem(NSMenuItem(title: "Quit Ration",
-                                    action: #selector(NSApplication.terminate(_:)),
-                                    keyEquivalent: "q"))
-
         let settingsItem = NSMenuItem(title: "Settings", action: nil, keyEquivalent: "")
         settingsItem.submenu = settings
         menu.addItem(settingsItem)
+
+        // Quit stays at the top level: people expect to find it without
+        // hunting, and a submenu is one level too far for the way out.
+        menu.addItem(NSMenuItem(title: "Quit Ration",
+                                action: #selector(NSApplication.terminate(_:)),
+                                keyEquivalent: "q"))
 
         statusItem.menu = menu
     }
