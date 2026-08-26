@@ -68,7 +68,7 @@ func runMenuModelTests(_ t: Harness) {
     t.expect("session states usage the same way", normal.contains(.stat("Session", "29% used")), true)
     t.expect("session reset gets its own line, like the week's",
              normal.contains(.stat("", "resets \(fmt.when(now.addingTimeInterval(5 * 3600), now: now))")), true)
-    t.expect("freshness is the last word", normal.last, .stat("", "Updated just now"))
+    t.expect("freshness is the last word", normal.last, .stat("Updated", "just now"))
 
     t.describe("rows — a spent session")
     let spent = rows(snap(session: 100, sessionResetsIn: 4320, week: 7))
@@ -107,7 +107,7 @@ func runMenuModelTests(_ t: Harness) {
     let old = snap(session: 10, week: 7, age: 3600)
     t.expect("says Claude Code is not running",
              MenuModel.rows(old, now: now, staleAfter: 90, formatting: fmt, lastWriteAt: old.capturedAt)
-                .contains(.stat("", "Claude Code not running · 1h ago")), true)
+                .contains(.stat("Updated", "1h ago · Claude Code not running")), true)
     t.expect("flags the reading", MenuModel.isStale(lastWriteAt: old.capturedAt, now: now, staleAfter: 90), true)
     t.expect("fresh readings are not stale",
              MenuModel.isStale(lastWriteAt: now, now: now, staleAfter: 90), false)
@@ -215,17 +215,17 @@ func runMenuModelTests(_ t: Harness) {
              MenuModel.isStale(lastWriteAt: now, now: now, staleAfter: 90), false)
     t.expect("and the row says the numbers are old, not that Claude Code is gone",
              MenuModel.rows(s2, now: now, staleAfter: 90, formatting: fmt, lastWriteAt: now)
-                .contains(.stat("", "Latest reading is 5m old")), true)
+                .contains(.stat("Updated", "5m ago")), true)
 
     t.expect("nothing writing, so stale",
              MenuModel.isStale(lastWriteAt: now.addingTimeInterval(-600), now: now, staleAfter: 90), true)
     t.expect("and the row says so",
              MenuModel.rows(s2, now: now, staleAfter: 90, formatting: fmt,
                             lastWriteAt: now.addingTimeInterval(-600))
-                .contains(.stat("", "Claude Code not running · 10m ago")), true)
+                .contains(.stat("Updated", "10m ago · Claude Code not running")), true)
 
     t.expect("fresh numbers read plainly",
              MenuModel.rows(snap(session: 29, week: 12, age: 5), now: now, staleAfter: 90,
                             formatting: fmt, lastWriteAt: now)
-                .contains(.stat("", "Updated just now")), true)
+                .contains(.stat("Updated", "just now")), true)
 }

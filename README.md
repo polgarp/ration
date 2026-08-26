@@ -3,21 +3,11 @@
 A macOS menu bar meter for Claude Code usage — and the only one that tells you
 whether you're burning the week faster than the week is passing.
 
-![Ration in the menu bar](docs/menubar.png)
-
-```
-Week runs out Sat 19:47
-──────────────────────────────────────
-Week      41% used · +7% ahead of pace
-          resets Mon 01:00
-Session   49% used
-          resets today 14:20
-Status    ● Claude Code operational
-          Updated just now
-──────────────────────────────────────
-Settings                             ▸
-Quit Ration
-```
+<p>
+  <img src="docs/menubar.png" alt="Ration in the macOS menu bar, showing a partly filled disc and a percentage" height="40">
+  &nbsp;&nbsp;
+  <img src="docs/ration-menu.jpg" alt="Ration's dropdown: week and session usage with reset times, Claude Code service status, and when the reading was last updated" width="330">
+</p>
 
 Claude Code's status line already shows your session usage. Ration adds the two
 things it can't: whether you're ahead of the week's pace, and — when a session

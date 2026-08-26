@@ -175,7 +175,8 @@ public enum MenuModel {
 
         if s.fiveHour == nil && s.sevenDay == nil && s.extra.isEmpty {
             rows.append(.note("Needs a Claude Pro or Max subscription"))
-            rows.append(.stat("", freshnessText(s, now: now, staleAfter: staleAfter, lastWriteAt: lastWriteAt)))
+            rows.append(.stat("Updated", freshnessText(s, now: now, staleAfter: staleAfter,
+                                                       lastWriteAt: lastWriteAt)))
             return rows
         }
 
@@ -199,7 +200,10 @@ public enum MenuModel {
         if let service, service.isCurrent(at: now) {
             rows.append(.status("Status", service.summary, service.claudeCode))
         }
-        rows.append(.stat("", freshnessText(s, now: now, staleAfter: staleAfter, lastWriteAt: lastWriteAt)))
+        // Its own labelled row, not a continuation of Status: the age belongs
+        // to the usage numbers, and under Status it reads as the service's age.
+        rows.append(.stat("Updated", freshnessText(s, now: now, staleAfter: staleAfter,
+                                                   lastWriteAt: lastWriteAt)))
         return rows
     }
 
@@ -219,11 +223,8 @@ public enum MenuModel {
                                       lastWriteAt: Date?) -> String {
         if isStale(lastWriteAt: lastWriteAt ?? s.capturedAt, now: now, staleAfter: staleAfter) {
             let since = now.timeIntervalSince(lastWriteAt ?? s.capturedAt)
-            return "Claude Code not running · \(Format.ago(since))"
+            return "\(Format.ago(since)) · Claude Code not running"
         }
-        // Running, but the sessions writing are idle ones carrying expired
-        // windows, so the numbers themselves are older than the writes.
-        let age = now.timeIntervalSince(s.capturedAt)
-        return age > staleAfter ? "Latest reading is \(Format.age(age)) old" : "Updated \(Format.ago(age))"
+        return Format.ago(now.timeIntervalSince(s.capturedAt))
     }
 }
