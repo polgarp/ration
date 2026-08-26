@@ -59,6 +59,23 @@ ration --login-on      # or --login-off
 ration --dump          # print what the menu would say
 ```
 
+## Weekly pace in your status line
+
+Ration isn't needed for this — the payload is already on your status line's
+stdin, so the pace costs one subtraction where you are already parsing:
+
+```python
+import time
+week = (data.get("rate_limits") or {}).get("seven_day") or {}
+used, resets = week.get("used_percentage"), week.get("resets_at")
+if used is not None and resets and resets > time.time():
+    elapsed = (time.time() - (resets - 604800)) / 604800 * 100
+    delta = used - elapsed
+    # Below 1% elapsed the ratio is noise, so claim nothing.
+    pace = "" if elapsed < 1 or abs(delta) < 1 else f" {delta:+.0f}%"
+    print(f"wk:{round(used)}%{pace}")     # -> wk:49% +9%
+```
+
 ## How it works
 
 Ration reads the documented
