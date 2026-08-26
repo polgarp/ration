@@ -46,7 +46,7 @@ public struct ServiceStatus: Equatable {
     public var summary: String {
         switch claudeCode {
         case .operational:  return "Claude Code operational"
-        case .degraded:     return "Claude Code degraded"
+        case .degraded:     return "Claude Code is degraded"
         case .outage:       return "Claude Code is down"
         case .maintenance:  return "Claude Code under maintenance"
         case .unknown:      return "Claude Code status unknown"

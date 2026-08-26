@@ -139,9 +139,10 @@ public enum Installer {
 
                 \(tap) \(command)
 
-            Your status line keeps rendering exactly as it does now — the tap \
-            passes it through untouched. refreshInterval is set to \
-            \(refreshInterval) seconds if you have not set one.
+            Your status line keeps rendering exactly as it does now — your \
+            command still runs, untouched. Ration also asks Claude Code to \
+            refresh every \(refreshInterval) seconds, unless you have already \
+            chosen a rate.
             """
         case .notConfigured:
             return """
@@ -150,7 +151,8 @@ public enum Installer {
 
                 \(tap)
 
-            refreshInterval is set to \(refreshInterval) seconds.
+            Ration also asks Claude Code to refresh every \(refreshInterval) \
+            seconds.
             """
         case .wrapped:
             return "Already set up. Nothing to change."

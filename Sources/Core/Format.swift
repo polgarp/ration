@@ -18,6 +18,15 @@ public enum Format {
         return "\(minutes)m"
     }
 
+    /// A bare age, for phrases that supply their own preposition.
+    public static func age(_ seconds: TimeInterval) -> String {
+        let total = Int(max(0, seconds))
+        if total < 60 { return "\(total)s" }
+        if total < 3600 { return "\(total / 60)m" }
+        if total < 86400 { return "\(total / 3600)h" }
+        return "\(total / 86400)d"
+    }
+
     /// Age of the current reading.
     public static func ago(_ seconds: TimeInterval) -> String {
         let total = Int(max(0, seconds))

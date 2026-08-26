@@ -16,7 +16,7 @@ func runServiceStatusTests(_ t: Harness) {
     t.expect("reads the component, not just the banner",
              degraded?.claudeCode ?? .unknown, .degraded)
     t.expect("worth saying", degraded?.isNoteworthy ?? false, true)
-    t.expect("names the component in the row", degraded?.summary ?? "", "Claude Code degraded")
+    t.expect("names the component in the row", degraded?.summary ?? "", "Claude Code is degraded")
 
     t.describe("ServiceStatus — outage")
     t.expect("major outage reads as an outage", decode("status-outage")?.claudeCode ?? .unknown, .outage)

@@ -143,7 +143,7 @@ final class MenuBarController: NSObject {
         case .notConfigured, .unwrapped:
             settings.addItem(action("Set up Ration…", #selector(confirmInstall)))
         case .unreadable:
-            settings.addItem(action("settings.json needs fixing…", #selector(explainUnreadable)))
+            settings.addItem(action("Why Ration can't set up…", #selector(explainUnreadable)))
         }
 
         let settingsItem = NSMenuItem(title: "Settings", action: nil, keyEquivalent: "")
@@ -258,7 +258,7 @@ final class MenuBarController: NSObject {
         // without the user reading precisely what changes.
         alert.informativeText = Installer.preview(for: state, tap: Setup.resolvedTapCommand)
             + "\n\nYour settings.json is backed up first."
-        alert.addButton(withTitle: "Set up")
+        alert.addButton(withTitle: "Set Up")
         alert.addButton(withTitle: "Cancel")
         NSApp.activate(ignoringOtherApps: true)
         guard alert.runModal() == .alertFirstButtonReturn else { return }
@@ -266,10 +266,10 @@ final class MenuBarController: NSObject {
         do {
             try Setup.install()
             report("Ration is set up.",
-                   "Usage will appear within a few seconds. Existing Claude Code sessions "
-                 + "pick up the change on their next status line refresh.")
+                   "Your usage appears in the menu bar within a few seconds. Claude Code "
+                 + "sessions already running pick it up on their next status line refresh.")
         } catch {
-            report("Nothing was changed.", error.localizedDescription, style: .warning)
+            report("Couldn't set up Ration", error.localizedDescription, style: .warning)
         }
     }
 
@@ -279,16 +279,16 @@ final class MenuBarController: NSObject {
         alert.informativeText = "Ration stops reading Claude Code's status line. Your own "
             + "status line command is restored exactly as it was, and the saved usage data "
             + "is deleted. Ration keeps running, with nothing to show, until you set it up again."
-        alert.addButton(withTitle: "Remove")
+        alert.addButton(withTitle: "Undo Setup")
         alert.addButton(withTitle: "Cancel")
         NSApp.activate(ignoringOtherApps: true)
         guard alert.runModal() == .alertFirstButtonReturn else { return }
 
         do {
             try Setup.uninstall()
-            report("Removed.", "Your status line is back to what it was.")
+            report("Setup undone.", "Your status line is back to what it was.")
         } catch {
-            report("Nothing was changed.", error.localizedDescription, style: .warning)
+            report("Couldn't undo setup", error.localizedDescription, style: .warning)
         }
     }
 
@@ -298,7 +298,7 @@ final class MenuBarController: NSObject {
             try LoginItem.setEnabled(turningOn)
         } catch let error as NSError {
             // Report what the system said rather than guessing at a cause.
-            report("Could not change the login item.",
+            report(turningOn ? "Couldn't turn on Open at Login" : "Couldn't turn off Open at Login",
                    "\(error.localizedDescription)\n\n(\(error.domain) \(error.code))",
                    style: .warning)
         }
@@ -317,7 +317,7 @@ final class MenuBarController: NSObject {
     }
 
     @objc private func explainUnreadable() {
-        report("settings.json could not be parsed",
+        report("Why Ration can't set up",
                "Ration will not modify a settings file it cannot read, because a wrong guess "
              + "would break Claude Code. Fix ~/.claude/settings.json by hand, then try again.",
                style: .warning)

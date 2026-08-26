@@ -68,11 +68,11 @@ func runMenuModelTests(_ t: Harness) {
     t.expect("session states usage the same way", normal.contains(.stat("Session", "29% used")), true)
     t.expect("session reset gets its own line, like the week's",
              normal.contains(.stat("", "resets \(fmt.when(now.addingTimeInterval(5 * 3600), now: now))")), true)
-    t.expect("freshness is the last word", normal.last, .stat("", "updated just now"))
+    t.expect("freshness is the last word", normal.last, .stat("", "Updated just now"))
 
     t.describe("rows — a spent session")
     let spent = rows(snap(session: 100, sessionResetsIn: 4320, week: 7))
-    t.expect("says it is spent", spent.contains(.stat("Session", "spent")), true)
+    t.expect("says it is used up", spent.contains(.stat("Session", "Used up")), true)
     t.expect("and when it comes back",
              spent.contains(.stat("", "resumes \(fmt.when(now.addingTimeInterval(4320), now: now))")), true)
 
@@ -89,7 +89,7 @@ func runMenuModelTests(_ t: Harness) {
     t.describe("rows — nothing installed yet")
     t.expect("tells you what to do", rows(nil), [.headline("Not set up"),
                                                  .separator,
-                                                 .note("Install the status line tap to start")])
+                                                 .note("Connect Ration to Claude Code to start")])
 
     t.describe("rows — no rate limits in the payload")
     t.expect("names the actual requirement",
@@ -100,7 +100,7 @@ func runMenuModelTests(_ t: Harness) {
                           sevenDay: UsageWindow(usedPercentage: 82, resetsAt: now.addingTimeInterval(-3600)),
                           capturedAt: now)
     t.expect("says it is waiting rather than reporting a dead window",
-             rows(rolled).contains(.stat("Week", "waiting for a fresh reading")), true)
+             rows(rolled).contains(.stat("Week", "Waiting for a fresh reading")), true)
     t.expect("and the bar has nothing honest to show", bar(rolled).isEmpty, true)
 
     t.describe("staleness")
@@ -131,7 +131,7 @@ func runMenuModelTests(_ t: Harness) {
     t.describe("service health — an outage outranks even a spent session")
     let both = rows(snap(session: 100, sessionResetsIn: 4320, week: 7),
                     service: ServiceStatus(claudeCode: .degraded))
-    t.expect("degradation leads", both.first, .headline("Claude Code degraded"))
+    t.expect("degradation leads", both.first, .headline("Claude Code is degraded"))
 
     t.describe("service health — no reading at all")
     // The status page being unreachable is our problem, not Anthropic's, and
@@ -150,7 +150,7 @@ func runMenuModelTests(_ t: Harness) {
              MenuModel.spoken(snap(session: 100, sessionResetsIn: 4320, week: 12, weekElapsed: 0.1),
                               now: now, formatting: fmt),
              "Ration. Week 12 percent used, 2 percent ahead of pace. "
-             + "Session spent, back \(fmt.when(now.addingTimeInterval(4320), now: now)).")
+             + "Session used up, back \(fmt.when(now.addingTimeInterval(4320), now: now)).")
     t.expect("no data says so rather than reading a dash",
              MenuModel.spoken(nil, now: now, formatting: fmt), "Ration. Not set up.")
     t.expect("a service problem is announced first",
@@ -177,7 +177,7 @@ func runMenuModelTests(_ t: Harness) {
              justStarted.contains(.stat("Week", "3% used")), true)
     t.expect("and the headline makes no claim either",
              MenuModel.headline(snap(session: 5, week: 3, weekElapsed: 0.005),
-                                now: now, formatting: fmt), "Week just started")
+                                now: now, formatting: fmt), "Too early to judge the week")
 
     t.describe("headline — model buckets are usage data")
     // "No usage data" appeared above rows listing real per-model percentages.
@@ -215,7 +215,7 @@ func runMenuModelTests(_ t: Harness) {
              MenuModel.isStale(lastWriteAt: now, now: now, staleAfter: 90), false)
     t.expect("and the row says the numbers are old, not that Claude Code is gone",
              MenuModel.rows(s2, now: now, staleAfter: 90, formatting: fmt, lastWriteAt: now)
-                .contains(.stat("", "numbers from 5m ago")), true)
+                .contains(.stat("", "Latest reading is 5m old")), true)
 
     t.expect("nothing writing, so stale",
              MenuModel.isStale(lastWriteAt: now.addingTimeInterval(-600), now: now, staleAfter: 90), true)
@@ -227,5 +227,5 @@ func runMenuModelTests(_ t: Harness) {
     t.expect("fresh numbers read plainly",
              MenuModel.rows(snap(session: 29, week: 12, age: 5), now: now, staleAfter: 90,
                             formatting: fmt, lastWriteAt: now)
-                .contains(.stat("", "updated just now")), true)
+                .contains(.stat("", "Updated just now")), true)
 }

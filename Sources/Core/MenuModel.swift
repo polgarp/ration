@@ -38,7 +38,7 @@ public enum MenuModel {
 
     /// Said when a window has rolled over and Claude Code has not yet served a
     /// payload for the new one.
-    static let waitingText = "waiting for a fresh reading"
+    static let waitingText = "Waiting for a fresh reading"
 
     // MARK: Bar
 
@@ -87,11 +87,11 @@ public enum MenuModel {
         }
         guard let week = s.sevenDay else {
             // Model buckets are usage data too.
-            return s.extra.isEmpty ? "No usage data" : "Tracking model limits"
+            return s.extra.isEmpty ? "No usage data" : "Per-model limits only"
         }
-        if week.hasRolledOver(at: now) { return "Waiting for a fresh reading" }
+        if week.hasRolledOver(at: now) { return "Usage window has reset" }
         let pace = Metrics.weeklyPace(week, now: now)
-        if pace.isEarly { return "Week just started" }
+        if pace.isEarly { return "Too early to judge the week" }
         if let capsOut = pace.capsOutAt { return "Week runs out \(formatting.when(capsOut, now: now))" }
         return "Week on pace"
     }
@@ -128,7 +128,7 @@ public enum MenuModel {
         }
         if let session = s.fiveHour, !session.hasRolledOver(at: now) {
             parts.append(session.usedPercentage >= sessionSpentAt
-                ? "Session spent, back \(formatting.when(session.resetsAt, now: now))."
+                ? "Session used up, back \(formatting.when(session.resetsAt, now: now))."
                 : "Session \(Int(session.usedPercentage.rounded())) percent used.")
         }
         if parts.count == 1 { parts.append("Waiting for a fresh reading.") }
@@ -164,7 +164,7 @@ public enum MenuModel {
                 ? [.headline("Waiting for Claude Code"), .separator,
                    .note("Usage appears at the next status line refresh")]
                 : [.headline("Not set up"), .separator,
-                   .note("Install the status line tap to start")]
+                   .note("Connect Ration to Claude Code to start")]
         }
 
         var rows: [MenuRow] = [.headline(headline(s, now: now, formatting: formatting, service: service)),
@@ -208,7 +208,7 @@ public enum MenuModel {
                                suffix: String = "", spentAt: Double? = nil) -> [MenuRow] {
         if w.hasRolledOver(at: now) { return [.stat(label, waitingText)] }
         if let spentAt, w.usedPercentage >= spentAt {
-            return [.stat(label, "spent"),
+            return [.stat(label, "Used up"),
                     .stat("", "resumes \(formatting.when(w.resetsAt, now: now))")]
         }
         return [.stat(label, "\(Int(w.usedPercentage.rounded()))% used\(suffix)"),
@@ -224,6 +224,6 @@ public enum MenuModel {
         // Running, but the sessions writing are idle ones carrying expired
         // windows, so the numbers themselves are older than the writes.
         let age = now.timeIntervalSince(s.capturedAt)
-        return age > staleAfter ? "numbers from \(Format.ago(age))" : "updated \(Format.ago(age))"
+        return age > staleAfter ? "Latest reading is \(Format.age(age)) old" : "Updated \(Format.ago(age))"
     }
 }
