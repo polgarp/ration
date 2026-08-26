@@ -1,7 +1,6 @@
 # Ration
 
-A macOS menu bar meter for Claude Code usage — and the only one that tells you
-whether you're burning the week faster than the week is passing.
+A macOS menu bar meter for Claude Code usage.
 
 <p>
   <img src="docs/menubar.png" alt="Ration in the macOS menu bar, showing a partly filled disc and a percentage" height="40">
@@ -9,9 +8,9 @@ whether you're burning the week faster than the week is passing.
   <img src="docs/ration-menu.jpg" alt="Ration's dropdown: week and session usage with reset times, Claude Code service status, and when the reading was last updated" width="330">
 </p>
 
-Claude Code's status line already shows your session usage. Ration adds the two
-things it can't: whether you're ahead of the week's pace, and — when a session
-runs dry — the time you get it back. Times follow your Mac's clock format.
+Claude Code's status line already shows your session usage. Ration adds two
+things: whether you're ahead of the week's pace, and (when a session runs dry)
+the time you get it back.
 
 ## Install
 
@@ -23,13 +22,12 @@ brew install ration
 open "$(brew --prefix)/opt/ration/Ration.app"
 ```
 
-Then **Settings → Set up Ration…**, which shows the exact change it will make
-to `settings.json` before touching anything.
+Then **Settings → Set up Ration…**, which shows the change it will make to
+`settings.json`.
 
-Ration builds on your machine rather than shipping a binary, so nothing is
-downloaded and nothing is quarantined — no Gatekeeper prompt, and no Apple
-Developer account behind it. Building needs only the Command Line Tools
-Homebrew already requires, and takes a few seconds.
+Ration builds on your machine, so nothing is downloaded and nothing is
+quarantined. Building needs only the Command Line Tools, and takes a few
+seconds.
 
 <details>
 <summary>Without Homebrew</summary>
@@ -40,18 +38,13 @@ cd ration && ./build.sh
 cp -R build/Ration.app /Applications/
 open /Applications/Ration.app
 ```
-
-A locally built app is ad-hoc signed by the linker and carries no quarantine
-flag, so it launches without a warning. A *downloaded* unsigned build would not:
-macOS 15 removed the Control-click → Open shortcut, and it would have to be
-approved under System Settings → Privacy & Security.
 </details>
 
-## Using it
+## Use
 
-The menu bar shows how much of your **week** is spent, since Claude Code
-already reports the session. When a session runs out, the time you get it back
-appears beside it: `41% · 1h 12m`.
+The menu bar shows how much of your **week** is spent, since Claude Code already
+reports the session. When a session runs out, the time you get it back appears
+beside it: `41% · 1h 12m`.
 
 **Settings** holds **Open at Login** and **Undo Setup…**. Everything also works
 from the terminal:
@@ -68,7 +61,7 @@ ration --dump          # print what the menu would say
 
 Ration reads the documented
 [`rate_limits`](https://code.claude.com/docs/en/statusline) from Claude Code's
-status line. No API calls, no cookie, no token.
+status line.
 
 Setup wraps whatever status line command you already have:
 
@@ -85,8 +78,8 @@ The wrapper installs to `~/.claude/`, not inside the app bundle, so deleting
 Ration can't break your status line.
 
 Every Claude Code session writes that same file, and sessions left idle
-rebroadcast windows that have already expired. Ration keeps whichever reading
-is genuinely newest rather than whichever landed last.
+rebroadcast windows that have already expired. Ration keeps whichever reading is
+genuinely newest rather than whichever landed last.
 
 ## Privacy
 
