@@ -26,8 +26,8 @@ public enum MenuRow: Equatable {
     case headline(String)
     case stat(String, String)
     case note(String)
-    /// Carries a level so the view can draw a semantic dot.
-    case status(String, ServiceStatus.Level)
+    /// Label, text, and a level so the view can draw a semantic dot.
+    case status(String, String, ServiceStatus.Level)
     case separator
 }
 
@@ -67,7 +67,7 @@ public enum MenuModel {
     }
 
     /// Always the week, so the glyph and the number report one window.
-    public static func markUsage(_ s: Snapshot?, now: Date = Date()) -> Double? {
+    public static func markUsage(_ s: Snapshot?, now: Date) -> Double? {
         guard let week = s?.sevenDay, !week.hasRolledOver(at: now) else { return nil }
         return week.usedPercentage
     }
@@ -135,8 +135,10 @@ public enum MenuModel {
     /// A row as a phrase: the tab stop that aligns columns reads as a gap.
     public static func spokenRow(_ row: MenuRow) -> String {
         switch row {
-        case .headline(let text), .note(let text), .status(let text, _):
+        case .headline(let text), .note(let text):
             return text
+        case .status(let label, let text, _):
+            return "\(label): \(text)"
         case .stat(let label, let value):
             let phrase = value.replacingOccurrences(of: " · ", with: ", ")
             return label.isEmpty ? phrase : "\(label): \(phrase)"
@@ -165,15 +167,11 @@ public enum MenuModel {
                                .separator]
         // A problem is repeated as a row so it reads as a distinct fact rather
         // than only as a headline that displaced the usage conclusion.
-        if let service, service.isCurrent(at: now), service.isNoteworthy {
-            rows.append(.status(service.summary, service.claudeCode))
-            rows.append(.separator)
-        }
+
 
         if s.fiveHour == nil && s.sevenDay == nil && s.extra.isEmpty {
             rows.append(.note("Needs a Claude Pro or Max subscription"))
-            rows.append(.separator)
-            rows.append(freshness(s, now: now, staleAfter: staleAfter))
+            rows.append(.stat("", freshnessText(s, now: now, staleAfter: staleAfter)))
             return rows
         }
 
@@ -192,14 +190,12 @@ public enum MenuModel {
             rows += window(bucket.label, bucket.window, now: now, formatting: formatting)
         }
 
-        rows.append(.separator)
-        // When all is well the confirmation stays small and last: enough to see
-        // the watch is running, not enough to be told daily that nothing is
-        // wrong.
-        if let service, service.isCurrent(at: now), !service.isNoteworthy {
-            rows.append(.status(service.summary, service.claudeCode))
+        // Status closes the same three-column block as the windows above it,
+        // with freshness as its continuation line.
+        if let service, service.isCurrent(at: now) {
+            rows.append(.status("Status", service.summary, service.claudeCode))
         }
-        rows.append(freshness(s, now: now, staleAfter: staleAfter))
+        rows.append(.stat("", freshnessText(s, now: now, staleAfter: staleAfter)))
         return rows
     }
 
@@ -215,10 +211,10 @@ public enum MenuModel {
                 .stat("", "resets \(formatting.when(w.resetsAt, now: now))")]
     }
 
-    private static func freshness(_ s: Snapshot, now: Date, staleAfter: TimeInterval) -> MenuRow {
+    private static func freshnessText(_ s: Snapshot, now: Date, staleAfter: TimeInterval) -> String {
         let age = now.timeIntervalSince(s.capturedAt)
-        return .note(age > staleAfter
+        return age > staleAfter
             ? "Claude Code not running · \(Format.ago(age))"
-            : "Updated \(Format.ago(age))")
+            : "updated \(Format.ago(age))"
     }
 }

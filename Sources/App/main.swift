@@ -43,7 +43,7 @@ if CommandLine.arguments.contains("--dump") {
         case .headline(let s):    print("  \(s)")
         case .stat(let l, let v): print("  \(l.padding(toLength: max(8, l.count), withPad: " ", startingAt: 0)) \(v)")
         case .note(let s):        print("  \(s)")
-        case .status(let s, let l): print("  ● \(s) [\(l)]")
+        case .status(let l, let t, let lv): print("  \(l.padding(toLength: max(8, l.count), withPad: " ", startingAt: 0)) ● \(t) [\(lv)]")
         case .separator:          print("  ──────────")
         }
     }

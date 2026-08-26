@@ -31,7 +31,7 @@ func runMenuModelTests(_ t: Harness) {
     t.expect("reports usage, matching the mark", bar(snap(session: 8, week: 7)).weekUsed ?? -1, 7.0)
     t.expect("renders as a bare percentage", MenuModel.barText(bar(snap(session: 8, week: 7))), "7%")
     t.expect("glyph reads the same window and the same direction",
-             MenuModel.markUsage(snap(session: 8, week: 7)) ?? -1, 7.0)
+             MenuModel.markUsage(snap(session: 8, week: 7), now: now) ?? -1, 7.0)
     t.expect("nothing at all without data", bar(nil).isEmpty, true)
     t.expect("empty renders as a dash", MenuModel.barText(bar(nil)), "—")
 
@@ -68,7 +68,7 @@ func runMenuModelTests(_ t: Harness) {
     t.expect("session states usage the same way", normal.contains(.stat("Session", "29% used")), true)
     t.expect("session reset gets its own line, like the week's",
              normal.contains(.stat("", "resets \(fmt.when(now.addingTimeInterval(5 * 3600), now: now))")), true)
-    t.expect("freshness is the last word", normal.last, .note("Updated just now"))
+    t.expect("freshness is the last word", normal.last, .stat("", "updated just now"))
 
     t.describe("rows — a spent session")
     let spent = rows(snap(session: 100, sessionResetsIn: 4320, week: 7))
@@ -106,7 +106,7 @@ func runMenuModelTests(_ t: Harness) {
     t.describe("staleness")
     let old = snap(session: 10, week: 7, age: 3600)
     t.expect("says Claude Code is not running",
-             rows(old).contains(.note("Claude Code not running · 1h ago")), true)
+             rows(old).contains(.stat("", "Claude Code not running · 1h ago")), true)
     t.expect("flags the reading", MenuModel.isStale(old, now: now, staleAfter: 90), true)
     t.expect("fresh readings are not stale",
              MenuModel.isStale(snap(session: 10, week: 7, age: 5), now: now, staleAfter: 90), false)
@@ -117,15 +117,15 @@ func runMenuModelTests(_ t: Harness) {
     // something you already assumed.
     let healthy = rows(snap(session: 29, week: 7), service: ServiceStatus(claudeCode: .operational))
     t.expect("the headline still belongs to the week", healthy.first, .headline("Week on pace"))
-    t.expect("a quiet confirmation sits at the end",
-             healthy.contains(.status("Claude Code operational", .operational)), true)
+    t.expect("status sits in the same block as the windows",
+             healthy.contains(.status("Status", "Claude Code operational", .operational)), true)
 
     t.describe("service health — loud when it is not")
     // If Claude is down, your quota is beside the point. It takes the headline.
     let down = rows(snap(session: 29, week: 7), service: ServiceStatus(claudeCode: .outage))
     t.expect("an outage outranks every usage conclusion", down.first, .headline("Claude Code is down"))
     t.expect("and is repeated as a status row",
-             down.contains(.status("Claude Code is down", .outage)), true)
+             down.contains(.status("Status", "Claude Code is down", .outage)), true)
 
     t.describe("service health — an outage outranks even a spent session")
     let both = rows(snap(session: 100, sessionResetsIn: 4320, week: 7),
@@ -164,8 +164,8 @@ func runMenuModelTests(_ t: Harness) {
     t.expect("a continuation row carries no stray colon",
              MenuModel.spokenRow(.stat("", "resets Mon 01:00")), "resets Mon 01:00")
     t.expect("status rows say the level, so colour is never the only signal",
-             MenuModel.spokenRow(.status("Claude Code operational", .operational)),
-             "Claude Code operational")
+             MenuModel.spokenRow(.status("Status", "Claude Code operational", .operational)),
+             "Status: Claude Code operational")
 
     t.describe("pace — no claim before the window has run")
     // The projection is suppressed below 1% elapsed, but the pace clause was

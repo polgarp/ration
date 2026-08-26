@@ -42,6 +42,17 @@ final class MenuBarController: NSObject {
         service.onUpdate = { [weak self] in self?.render() }
         service.start()
 
+        // Nothing writes the snapshot while the machine sleeps, so the reading
+        // is always stale on wake. Waiting for the next tick to notice leaves
+        // the item dimmed for seconds after the screen is back.
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.lastModified = nil   // re-read even if the mtime is unchanged
+            self?.reload()
+            self?.render()
+        }
+
         // One timer does both jobs. A DispatchSource vnode watch is the obvious
         // choice, but the tap replaces the file by atomic rename, so the watched
         // descriptor would point at a dead inode after every write and need
@@ -115,24 +126,34 @@ final class MenuBarController: NSObject {
         for row in rows {
             menu.addItem(view(for: row))
         }
-        // The only actionable items in the dropdown, kept at the bottom so the
-        // reading is never competing with a control.
+        // The commands live behind one submenu so the reading is not competing
+        // with controls.
+        menu.addItem(.separator())
+        let settings = NSMenu()
+        settings.autoenablesItems = false
+
+        let loginItem = action("Open at Login", #selector(toggleLoginItem))
+        loginItem.state = login ? .on : .off
+        settings.addItem(loginItem)
+
         switch setup {
         case .wrapped:
-            menu.addItem(action("Undo Setup…", #selector(confirmUninstall)))
+            settings.addItem(action("Undo Setup…", #selector(confirmUninstall)))
         case .notConfigured, .unwrapped:
-            menu.addItem(action("Set up Ration…", #selector(confirmInstall)))
+            settings.addItem(action("Set up Ration…", #selector(confirmInstall)))
         case .unreadable:
-            menu.addItem(action("settings.json needs fixing…", #selector(explainUnreadable)))
+            settings.addItem(action("settings.json needs fixing…", #selector(explainUnreadable)))
         }
-        let loginItem = action("Open at Login", #selector(toggleLoginItem))
-        // A tick when it is on, a dash when macOS is still waiting for the user
-        // to confirm it in System Settings.
-        loginItem.state = login ? .on : .off
-        menu.addItem(loginItem)
-        menu.addItem(NSMenuItem(title: "Quit Ration",
-                                action: #selector(NSApplication.terminate(_:)),
-                                keyEquivalent: "q"))
+
+        settings.addItem(.separator())
+        settings.addItem(NSMenuItem(title: "Quit Ration",
+                                    action: #selector(NSApplication.terminate(_:)),
+                                    keyEquivalent: "q"))
+
+        let settingsItem = NSMenuItem(title: "Settings", action: nil, keyEquivalent: "")
+        settingsItem.submenu = settings
+        menu.addItem(settingsItem)
+
         statusItem.menu = menu
     }
 
@@ -182,18 +203,21 @@ final class MenuBarController: NSObject {
                 .foregroundColor: NSColor.labelColor
             ]))
 
-        case .status(let text, let level):
-            // Semantic colour on the dot only; the text stays in the menu's own
-            // ink so a healthy row reads as quiet rather than decorated.
-            let dot = NSMutableAttributedString(string: "● ", attributes: [
-                .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
-                .foregroundColor: colour(for: level)
+        case .status(let label, let text, let level):
+            // Same tab stop as the stat rows, so the three blocks line up.
+            // Semantic colour on the dot only; the text stays in the menu's ink.
+            let line = NSMutableAttributedString(string: "\(label)\t", attributes: [
+                .font: NSFont.menuFont(ofSize: 0),
+                .foregroundColor: NSColor.secondaryLabelColor,
+                .paragraphStyle: statColumns()
             ])
-            dot.append(NSAttributedString(string: text, attributes: [
-                .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
-                .foregroundColor: NSColor.secondaryLabelColor
+            line.append(NSAttributedString(string: "● ", attributes: [
+                .font: NSFont.menuFont(ofSize: 0), .foregroundColor: colour(for: level)
             ]))
-            let statusItem = item(dot, spoken: MenuModel.spokenRow(row) + ", opens the status page")
+            line.append(NSAttributedString(string: text, attributes: [
+                .font: NSFont.menuFont(ofSize: 0), .foregroundColor: NSColor.labelColor
+            ]))
+            let statusItem = item(line, spoken: MenuModel.spokenRow(row) + ", opens the status page")
             statusItem.action = #selector(openStatusPage)
             statusItem.target = self
             return statusItem
@@ -205,14 +229,10 @@ final class MenuBarController: NSObject {
             ]))
 
         case .stat(let label, let value):
-            // A tab stop keeps the value column aligned whether or not the row
-            // carries a label, so continuation lines sit under their value.
-            let style = NSMutableParagraphStyle()
-            style.tabStops = [NSTextTab(textAlignment: .left, location: 68)]
             let s = NSMutableAttributedString(string: "\(label)\t\(value)", attributes: [
                 .font: NSFont.menuFont(ofSize: 0),
                 .foregroundColor: NSColor.labelColor,
-                .paragraphStyle: style
+                .paragraphStyle: statColumns()
             ])
             s.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor,
                            range: NSRange(location: 0, length: label.utf16.count))
@@ -309,6 +329,14 @@ final class MenuBarController: NSObject {
         alert.addButton(withTitle: "OK")
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()
+    }
+
+    /// A tab stop keeps the value column aligned whether or not a row carries a
+    /// label, so continuation lines sit under their value.
+    private func statColumns() -> NSParagraphStyle {
+        let style = NSMutableParagraphStyle()
+        style.tabStops = [NSTextTab(textAlignment: .left, location: 68)]
+        return style
     }
 
     private func colour(for level: ServiceStatus.Level) -> NSColor {
