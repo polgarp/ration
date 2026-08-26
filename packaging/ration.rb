@@ -14,7 +14,6 @@ class Ration < Formula
   license "MIT"
   head "https://github.com/polgarp/ration.git", branch: "main"
 
-  depends_on :macos
   depends_on macos: :ventura
 
   def install
