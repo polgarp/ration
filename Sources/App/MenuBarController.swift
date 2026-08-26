@@ -146,6 +146,9 @@ final class MenuBarController: NSObject {
             settings.addItem(action("Why Ration can't set up…", #selector(explainUnreadable)))
         }
 
+        settings.addItem(.separator())
+        settings.addItem(action("View Source on GitHub", #selector(openRepository)))
+
         let settingsItem = NSMenuItem(title: "Settings", action: nil, keyEquivalent: "")
         settingsItem.submenu = settings
         menu.addItem(settingsItem)
@@ -312,8 +315,12 @@ final class MenuBarController: NSObject {
         }
     }
 
+    @objc private func openRepository() {
+        NSWorkspace.shared.open(Links.repository)
+    }
+
     @objc private func openStatusPage() {
-        NSWorkspace.shared.open(ServiceMonitor.statusPage)
+        NSWorkspace.shared.open(Links.statusPage)
     }
 
     @objc private func explainUnreadable() {

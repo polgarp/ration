@@ -10,10 +10,7 @@ final class ServiceMonitor {
     private(set) var status: ServiceStatus?
     var onUpdate: (() -> Void)?
 
-    /// The page a reader is sent to; the endpoint below is its JSON summary.
-    static let statusPage = URL(string: "https://status.claude.com/")!
-
-    private let url = URL(string: "https://status.claude.com/api/v2/summary.json")!
+    private let url = Links.statusSummary
     /// Incidents are measured in minutes at best, and a public status page
     /// deserves polite traffic.
     private let interval: TimeInterval = 300
@@ -42,8 +39,7 @@ final class ServiceMonitor {
     private func fetch() {
         var request = URLRequest(url: url, timeoutInterval: 10)
         // Identify the client, so the operators can see who is calling.
-        request.setValue("Ration/0.1 (+https://github.com/polgarp/ration)",
-                         forHTTPHeaderField: "User-Agent")
+        request.setValue(Links.userAgent, forHTTPHeaderField: "User-Agent")
 
         session.dataTask(with: request) { [weak self] data, response, _ in
             guard let self else { return }
