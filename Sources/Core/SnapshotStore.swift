@@ -12,9 +12,15 @@ public struct SnapshotStore {
 
     public private(set) var best: Snapshot?
 
+    /// When any session last wrote, accepted or not. A refused write still
+    /// proves Claude Code is running, which is a different question from how
+    /// old the numbers are.
+    public private(set) var lastWriteAt: Date?
+
     public init() {}
 
     public mutating func accept(_ incoming: Snapshot) {
+        lastWriteAt = incoming.capturedAt
         guard let current = best else { best = incoming; return }
 
         let fiveHour = newer(current.fiveHour, incoming.fiveHour)

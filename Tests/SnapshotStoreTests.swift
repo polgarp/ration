@@ -109,4 +109,16 @@ func runSnapshotStoreTests(_ t: Harness) {
     keeping.accept(Snapshot(fiveHour: w(80, resetsIn: -200_000), sevenDay: nil,
                             extra: [], capturedAt: now.addingTimeInterval(10)))
     t.expect("an idle session's empty list is ignored", keeping.best?.extra.count ?? -1, 1)
+
+    t.describe("SnapshotStore — a rejected write still proves Claude Code is running")
+    // Idle sessions rebroadcast expired windows every 10s. Refusing their data
+    // is right; concluding from that refusal that nothing is running is not.
+    var writing = SnapshotStore()
+    writing.accept(Snapshot(fiveHour: w(20, resetsIn: 3600), sevenDay: nil, capturedAt: now))
+    writing.accept(Snapshot(fiveHour: w(80, resetsIn: -200_000), sevenDay: nil,
+                            capturedAt: now.addingTimeInterval(120)))
+    t.expect("the reading itself does not age forward",
+             writing.best?.capturedAt ?? Date.distantPast, now)
+    t.expect("but the last write does",
+             writing.lastWriteAt ?? Date.distantPast, now.addingTimeInterval(120))
 }

@@ -98,9 +98,12 @@ public enum MenuModel {
 
     // MARK: Freshness
 
-    public static func isStale(_ s: Snapshot?, now: Date, staleAfter: TimeInterval) -> Bool {
-        guard let capturedAt = s?.capturedAt else { return true }
-        return now.timeIntervalSince(capturedAt) > staleAfter
+    /// Whether Claude Code has stopped writing. Keyed on the last write of any
+    /// kind: idle sessions rebroadcast expired windows, and refusing their data
+    /// says nothing about whether anything is running.
+    public static func isStale(lastWriteAt: Date?, now: Date, staleAfter: TimeInterval) -> Bool {
+        guard let lastWriteAt else { return true }
+        return now.timeIntervalSince(lastWriteAt) > staleAfter
     }
 
     // MARK: Accessibility
@@ -152,7 +155,8 @@ public enum MenuModel {
     public static func rows(_ s: Snapshot?, now: Date, staleAfter: TimeInterval,
                             formatting: Formatting = Formatting(),
                             service: ServiceStatus? = nil,
-                            isInstalled: Bool = false) -> [MenuRow] {
+                            isInstalled: Bool = false,
+                            lastWriteAt: Date? = nil) -> [MenuRow] {
         guard let s else {
             // Installed but no payload yet is the ordinary first few seconds,
             // not a prompt to install something already installed.
@@ -171,7 +175,7 @@ public enum MenuModel {
 
         if s.fiveHour == nil && s.sevenDay == nil && s.extra.isEmpty {
             rows.append(.note("Needs a Claude Pro or Max subscription"))
-            rows.append(.stat("", freshnessText(s, now: now, staleAfter: staleAfter)))
+            rows.append(.stat("", freshnessText(s, now: now, staleAfter: staleAfter, lastWriteAt: lastWriteAt)))
             return rows
         }
 
@@ -195,7 +199,7 @@ public enum MenuModel {
         if let service, service.isCurrent(at: now) {
             rows.append(.status("Status", service.summary, service.claudeCode))
         }
-        rows.append(.stat("", freshnessText(s, now: now, staleAfter: staleAfter)))
+        rows.append(.stat("", freshnessText(s, now: now, staleAfter: staleAfter, lastWriteAt: lastWriteAt)))
         return rows
     }
 
@@ -211,10 +215,15 @@ public enum MenuModel {
                 .stat("", "resets \(formatting.when(w.resetsAt, now: now))")]
     }
 
-    private static func freshnessText(_ s: Snapshot, now: Date, staleAfter: TimeInterval) -> String {
+    private static func freshnessText(_ s: Snapshot, now: Date, staleAfter: TimeInterval,
+                                      lastWriteAt: Date?) -> String {
+        if isStale(lastWriteAt: lastWriteAt ?? s.capturedAt, now: now, staleAfter: staleAfter) {
+            let since = now.timeIntervalSince(lastWriteAt ?? s.capturedAt)
+            return "Claude Code not running · \(Format.ago(since))"
+        }
+        // Running, but the sessions writing are idle ones carrying expired
+        // windows, so the numbers themselves are older than the writes.
         let age = now.timeIntervalSince(s.capturedAt)
-        return age > staleAfter
-            ? "Claude Code not running · \(Format.ago(age))"
-            : "updated \(Format.ago(age))"
+        return age > staleAfter ? "numbers from \(Format.ago(age))" : "updated \(Format.ago(age))"
     }
 }

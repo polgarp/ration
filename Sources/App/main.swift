@@ -38,7 +38,8 @@ if CommandLine.arguments.contains("--dump") {
     print("bar:    \(MenuModel.barText(MenuModel.bar(snapshot, now: now)))")
     print("spoken: \(MenuModel.spoken(snapshot, now: now, formatting: Formatting(), service: service))")
     for row in MenuModel.rows(snapshot, now: now, staleAfter: 90, service: service,
-                              isInstalled: Setup.currentState() == .wrapped) {
+                              isInstalled: Setup.currentState() == .wrapped,
+                              lastWriteAt: store.lastWriteAt) {
         switch row {
         case .headline(let s):    print("  \(s)")
         case .stat(let l, let v): print("  \(l.padding(toLength: max(8, l.count), withPad: " ", startingAt: 0)) \(v)")

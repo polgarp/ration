@@ -95,7 +95,7 @@ final class MenuBarController: NSObject {
 
     private func render() {
         let now = Date()
-        let stale = MenuModel.isStale(snapshot, now: now, staleAfter: staleAfter)
+        let stale = MenuModel.isStale(lastWriteAt: store.lastWriteAt, now: now, staleAfter: staleAfter)
 
         let content = MenuModel.bar(snapshot, now: now)
         renderBar(content, stale: stale)
@@ -111,7 +111,8 @@ final class MenuBarController: NSObject {
         let setup = Setup.currentState()
         let login = LoginItem.isEnabled
         let rows = MenuModel.rows(snapshot, now: now, staleAfter: staleAfter, formatting: formatting,
-                                  service: service.status, isInstalled: setup == .wrapped)
+                                  service: service.status, isInstalled: setup == .wrapped,
+                                  lastWriteAt: store.lastWriteAt)
         guard rows != shownRows || setup != shownSetup || login != shownLogin
                 || statusItem.menu == nil else { return }
         shownLogin = login

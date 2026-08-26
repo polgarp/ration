@@ -106,10 +106,11 @@ func runMenuModelTests(_ t: Harness) {
     t.describe("staleness")
     let old = snap(session: 10, week: 7, age: 3600)
     t.expect("says Claude Code is not running",
-             rows(old).contains(.stat("", "Claude Code not running · 1h ago")), true)
-    t.expect("flags the reading", MenuModel.isStale(old, now: now, staleAfter: 90), true)
+             MenuModel.rows(old, now: now, staleAfter: 90, formatting: fmt, lastWriteAt: old.capturedAt)
+                .contains(.stat("", "Claude Code not running · 1h ago")), true)
+    t.expect("flags the reading", MenuModel.isStale(lastWriteAt: old.capturedAt, now: now, staleAfter: 90), true)
     t.expect("fresh readings are not stale",
-             MenuModel.isStale(snap(session: 10, week: 7, age: 5), now: now, staleAfter: 90), false)
+             MenuModel.isStale(lastWriteAt: now, now: now, staleAfter: 90), false)
 
     t.describe("service health — quiet when everything is fine")
     // A row saying "all is well" every single day is noise. It stays, but small
@@ -205,4 +206,26 @@ func runMenuModelTests(_ t: Harness) {
              MenuModel.headline(snap(session: 29, week: 12), now: now, formatting: fmt,
                                 service: ServiceStatus(claudeCode: .outage, checkedAt: now)),
              "Claude Code is down")
+
+    t.describe("freshness — running but with old numbers is not the same as not running")
+    // Dimming follows whether anything is writing the file; the wording follows
+    // how old the accepted numbers are.
+    let s2 = snap(session: 29, week: 12, age: 300)
+    t.expect("still writing, so not stale",
+             MenuModel.isStale(lastWriteAt: now, now: now, staleAfter: 90), false)
+    t.expect("and the row says the numbers are old, not that Claude Code is gone",
+             MenuModel.rows(s2, now: now, staleAfter: 90, formatting: fmt, lastWriteAt: now)
+                .contains(.stat("", "numbers from 5m ago")), true)
+
+    t.expect("nothing writing, so stale",
+             MenuModel.isStale(lastWriteAt: now.addingTimeInterval(-600), now: now, staleAfter: 90), true)
+    t.expect("and the row says so",
+             MenuModel.rows(s2, now: now, staleAfter: 90, formatting: fmt,
+                            lastWriteAt: now.addingTimeInterval(-600))
+                .contains(.stat("", "Claude Code not running · 10m ago")), true)
+
+    t.expect("fresh numbers read plainly",
+             MenuModel.rows(snap(session: 29, week: 12, age: 5), now: now, staleAfter: 90,
+                            formatting: fmt, lastWriteAt: now)
+                .contains(.stat("", "updated just now")), true)
 }
