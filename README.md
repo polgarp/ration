@@ -3,9 +3,10 @@
 A macOS menu bar meter for Claude Code usage.
 
 <p>
-  <img src="docs/menubar.png" alt="Ration in the macOS menu bar, showing a partly filled disc and a percentage" height="40">
-  &nbsp;&nbsp;
-  <img src="docs/ration-menu.jpg" alt="Ration's dropdown: week and session usage with reset times, Claude Code service status, and when the reading was last updated" width="330">
+  <img src="docs/menubar.png" alt="Ration in the macOS menu bar: a partly filled disc and a percentage" height="34">
+</p>
+<p>
+  <img src="docs/ration-menu.jpg" alt="Ration's dropdown: week and session usage with reset times, Claude Code service status, and when the reading was last updated" width="340">
 </p>
 
 Claude Code's status line already shows your session usage. Ration adds two
@@ -18,6 +19,7 @@ Needs macOS 13+, Claude Code, and a Claude Pro or Max subscription.
 
 ```bash
 brew tap polgarp/tap
+brew trust polgarp/tap     # Homebrew requires this for third-party taps
 brew install ration
 open "$(brew --prefix)/opt/ration/Ration.app"
 ```
